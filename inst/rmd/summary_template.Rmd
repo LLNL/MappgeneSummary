@@ -1,0 +1,819 @@
+---
+title: "mappgene summary"
+author: "Jeff Kimbrel"
+date: "`r date()`"
+always_allow_html: true
+css: style.css
+output:
+  rmdformats::downcute:
+    default_style: dark
+    highlight: default
+    toc_depth: 2
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: true
+params:
+  echo_type: FALSE
+  mappgene_file_path: test
+  summary_output_file_path: "."
+  overwrite_Rds_files: TRUE
+  api_top_count: 10
+---
+
+```{r setup, include=FALSE, warning = FALSE}
+library(knitr)
+library(rmdformats)
+library(tidyverse)
+library(jakR)
+library(MappgeneSummary)
+library(DT)
+library(patchwork)
+library(ggVennDiagram)
+library(jsonlite)
+
+options(max.print="100", scipen = 999)
+opts_chunk$set(echo=params$echo_type,
+	             cache=FALSE,
+               prompt=FALSE,
+               tidy=FALSE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE, 
+               fig.height = 5, 
+               fig.width = 8)
+```
+
+```{r}
+# global options (set from yaml header)
+if (params$mappgene_file_path == 'test') {
+  mappgene_file_path = system.file("test_files", "", package = "MappgeneSummary")
+} else {
+  mappgene_file_path = params$mappgene_file_path
+}
+
+summary_output_file_path = params$summary_output_file_path
+overwrite_Rds_files = params$overwrite_Rds_files
+api_top_count = params$api_top_count
+```
+
+# Background
+
+# Load and Process Files
+
+The summary is looking for files in the ``r mappgene_file_path`` directory, and will write the following files there. Creation of the `.Rds` files are typically the slowest part of this script, so they are saved to speed up testing and creation of the html summary. 
+
+File Name | File Type | Notes
+--- | --- | ---
+_summary_lofreq.Rds | R data | The lofreq data (tibble)
+_summary_ivar.Rds | R data | The ivar data (tibble)
+_summary_DF.Rds | R data | The "final" data use for all analysis (tibble)
+_summary_DF.txt | tab-delimited | The "final" data use for all analysis 
+_lofreq_top_outbreak_results.Rds | R data | The Outbreak API results from the top lofreq iSNVs (tibble)
+_ivar_top_outbreak_results.Rds | R data | The Outbreak API results from the top ivar iSNVs (tibble)
+_amplicon_summary.txt | tab-delimited | Attempt at re-creating a specific report for Excel analysis
+_amplicon_results.txt | tab-delimited | Attempt at re-creating a specific report for Excel analysis
+
+## Lofreq (iSNVs <1%)
+
+This is the "iVar -> LoFreq -> snpEFF/snpSIFT" workflow, and these results will have the "lofreq" `PIPELINE` string.
+
+```{r, eval = overwrite_Rds_files}
+files = list.files(path = mappgene_file_path, pattern = "*.ivar.snpSIFT.txt$", recursive = TRUE, full.names = T)
+
+df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
+  bind_rows(.id = "id")
+
+df = df %>%
+  mutate(FILE = basename(id)) %>% 
+  select(-id) %>%
+  mutate(SAMPLE = str_replace(FILE, ".ivar.snpSIFT.txt", "")) %>%
+  mutate(SAMPLE = str_replace(SAMPLE, "LLNL_", ""))
+
+names(df) = gsub(x = names(df), pattern = "ANN\\[\\*\\]\\.", replacement = "")
+
+df = df %>%
+  select("SAMPLE", "GENE", "POS", "REF", "ALT", "AF", "DP", "EFFECT", 
+         "HGVS_C", "HGVS_P", "CDNA_POS", "AA_POS", "FILE") %>%
+  #rename("TOTAL_DP" = "DP", "ALT_FREQ" = "AF") %>% # no longer needed when using snpSIFT for ivar files
+  unique()%>%
+  #mutate(PIPELINE = "lofreq", ALT_DP = TOTAL_DP * ALT_FREQ) # edited when using snpSIFT for ivar files
+  mutate(PIPELINE = "lofreq", ALT_DP = as.integer(DP * AF))
+
+saveRDS(df, file = file.path(summary_output_file_path, "_summary_lofreq.Rds"))
+rm(df)
+```
+
+```
+# LEGACY CODE, no longer implemented
+Renaming snpSIFT columns to match iVar output.. 
+
+Original | New
+--- | ---
+DP | TOTAL_DP
+AF | ALT_FREQ
+```
+
+The `ALT_DP` column has been added as `as.integer(DP * AF)`.
+
+Also, converting the `HGVS_P` column to `REF_AA` and `ALT_AA`, and removing any synonymous mutations.
+
+```{r}
+keeper_effects = c('stop_gained', 
+                   'missense_variant',
+                   #'synonymous_variant',
+                   'conservative_inframe_deletion',
+                   'conservative_inframe_insertion',
+                   'disruptive_inframe_deletion',
+                   'disruptive_inframe_insertion') 
+
+df_lofreq = readRDS(file = file.path(summary_output_file_path, "_summary_lofreq.Rds"))  %>% 
+  filter(EFFECT %in% keeper_effects) %>%
+  filter(AF <= 0.01)
+
+patterns = c("p.", "Phe", "Leu", "Ile", "Met", "Val", "Ser", "Pro", "Thr", "Ala", "Tyr", "His", "Gln", "Asn", "Lys", "Asp", "Glu", "Cys", "Trp", "Arg", "Gly")
+replacement = c("", "F", "L", "I", "M", "V", "S", "P", "T", "A", "Y", "H", "Q", "N", "K", "D", "E", "C", "W", "R", "G")
+
+df_lofreq = df_lofreq %>%
+  mutate(HGVS_P = str_replace_all(HGVS_P, setNames(replacement, patterns))) %>%
+  separate(HGVS_P, sep = "[0-9]+", into = c("REF_AA", "ALT_AA"), remove = F) %>%
+  filter(REF_AA != ALT_AA)
+```
+
+## iVar (iSNVs > 1%)
+
+This is the "iVar -> snpEFF/snpSIFT" workflow, and these results will have the "ivar" `PIPELINE` string.
+
+```{r, eval = F}
+# LEGACY CODE FOR WHEN USING THE TSVs... no longer used
+
+# files = list.files(path = summary_output_file_path, pattern = "*.ivar.final.masked.variants.tsv$", recursive = TRUE, full.names = T)
+# 
+# df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
+#   bind_rows(.id = "id") %>%
+#   mutate(FILE = basename(id)) %>% 
+#   mutate(SAMPLE = str_replace(FILE, ".ivar.final.masked.variants.tsv", "")) %>%
+#   mutate(SAMPLE = str_replace(SAMPLE, "LLNL_", ""))
+# 
+# df = df %>%
+#   select(-id, -REGION, -FILE) %>%
+#   rename("GENE" = "GFF_FEATURE") %>%
+#   unique()%>%
+#   mutate(PIPELINE = "ivar")
+# 
+# saveRDS(df, file = file.path(summary_output_file_path, "_summary_ivar.Rds"))
+# rm(df)
+# 
+# df_ivar = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds")) %>%
+#   filter(PASS == TRUE) %>%
+#   filter(ALT_FREQ >= 0.01) %>%
+#   filter(ALT_QUAL > 20) %>%
+#   filter(REF_AA != ALT_AA) %>%
+#   select(-PASS, -REF_QUAL, -ALT_QUAL, -REF_RV, -ALT_RV)
+# 
+# ivar_genes = c("cds-YP_009724389.1",
+#          "cds-YP_009725295.1",
+#          "cds-YP_009724390.1",
+#          "cds-YP_009724391.1",
+#          "cds-YP_009724392.1",
+#          "cds-YP_009724393.1",
+#          "cds-YP_009724394.1",
+#          "cds-YP_009724395.1",
+#          "cds-YP_009724396.1",
+#          "cds-YP_009725296.1",
+#          "cds-YP_009724397.2",
+#          "cds-YP_009725255.1")
+# 
+# lofreq_genes = c("ORF1ab",
+#            "ORF1ab",
+#            "S",
+#            "ORF3a",
+#            "E",
+#            "M",
+#            "ORF6",
+#            "ORF7a",
+#            "ORF8",
+#            "ORF7b",
+#            "N",
+#            "ORF10"
+#            )
+# 
+# replacements = data.frame("ivar" = ivar_genes, "lofreq" = lofreq_genes)
+# 
+# replacements %>% format_dt()
+# 
+# df_ivar = df_ivar %>%
+#   mutate(GENE = str_replace_all(GENE, setNames(lofreq_genes, ivar_genes)))
+```
+
+iVar output was processed according to Jimmy's pipeline
+
+1. removing variant position with an ALT_QUAL of 20 (these are almost entirely single nt insertions), 
+2. removing positions that did not pass the Fisher test (PASS=FALSE)
+3. removing synonymous mutations (REF_AA=ALT_AA)
+
+```{r, eval = overwrite_Rds_files}
+files = list.files(path = mappgene_file_path, pattern = "*ivar.final.masked.variants.snpSIFT.txt$", recursive = TRUE, full.names = T)
+
+df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
+  bind_rows(.id = "id")
+
+df = df %>%
+  mutate(FILE = basename(id)) %>% 
+  select(-id) %>%
+  mutate(SAMPLE = str_replace(FILE, ".ivar.final.masked.variants.snpSIFT.txt", "")) %>%
+  mutate(SAMPLE = str_replace(SAMPLE, "LLNL_", "")) %>%
+  filter(ALT_QUAL > 20) %>%
+  filter(FILTER == 'PASS')
+
+names(df) = gsub(x = names(df), pattern = "ANN\\[\\*\\]\\.", replacement = "")
+
+df = df %>%
+  select("SAMPLE", "GENE", "POS", "REF", "ALT", "AF", "DP", "EFFECT", 
+         "HGVS_C", "HGVS_P", "CDNA_POS", "AA_POS", "FILE") %>%
+  unique()%>%
+  mutate(PIPELINE = "ivar", ALT_DP = as.integer(DP * AF))
+
+saveRDS(df, file = file.path(summary_output_file_path, "_summary_ivar.Rds"))
+rm(df)
+```
+
+The `ALT_DP` column has been added as `as.integer(DP * AF)`.
+
+Also, converting the `HGVS_P` column to `REF_AA` and `ALT_AA`, and removing any synonymous mutations.
+
+```{r}
+# keeper_effects, replacement and patterns already defined above
+
+df_ivar = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds")) %>% 
+  filter(EFFECT %in% keeper_effects) %>%
+  filter(AF >= 0.01)
+
+df_ivar = df_ivar %>%
+  mutate(HGVS_P = str_replace_all(HGVS_P, setNames(replacement, patterns))) %>%
+  separate(HGVS_P, sep = "[0-9]+", into = c("REF_AA", "ALT_AA"), remove = F) %>%
+  filter(REF_AA != ALT_AA)
+```
+
+## Pipeline Summary and Merging
+
+```{r}
+df_ivar = df_ivar  %>%
+  mutate(SNV = paste(GENE, POS, REF, ALT, sep = "."))
+
+df_lofreq = df_lofreq  %>%
+  mutate(SNV = paste(GENE, POS, REF, ALT, sep = "."))
+
+df = bind_rows(df_ivar, df_lofreq) %>%
+  arrange(POS)
+
+saveRDS(df, file = file.path(summary_output_file_path, "_summary_DF.Rds"))
+
+df %>%
+  write_delim(file.path(summary_output_file_path, "_summary_DF.txt"), delim = "\t")
+```
+
+```{r, fig.height=3, fig.width=12, eval = F}
+# not really needed anymore since both PIPELINEs are using snpSIFT, and therefore are using the same gene/GFF info
+df %>%
+  filter(GENE != "NA") %>%
+  select(PIPELINE, POS, GENE) %>%
+  group_by(PIPELINE, GENE) %>%
+  summarize(MIN = min(POS), MAX = max(POS)) %>%
+  ggplot() +
+    jak_theme() +
+    geom_segment(size = 10, aes(x=PIPELINE, xend=PIPELINE, y=MIN, yend=MAX, color = GENE)) +
+    geom_text(aes(label = GENE, x = PIPELINE, y = (MIN + MAX) / 2), angle = 90, size = 3) +
+    coord_flip() +
+    theme(legend.position = "none") +
+    scale_color_manual(values = palette_jak$bay(11))
+```
+
+```{r, fig.width=6, fig.height=4}
+lofreq = df %>% 
+  filter(PIPELINE == 'lofreq') %>%
+  pull(SAMPLE) %>% unique()
+
+ivar = df %>% 
+  filter(PIPELINE == 'ivar') %>%
+  pull(SAMPLE) %>% unique()
+
+sample_count = df %>%
+  pull(SAMPLE) %>% unique()
+
+x1 = list(lofreq = unique(df_lofreq$SNV),
+         ivar = unique(df_ivar$SNV)  
+         )
+
+ggVennDiagram(x1) +
+  scale_fill_gradient(low = "#F4FAFE", high = "#4981BF") +
+  scale_color_manual(values = c("black", "black")) +
+  theme(legend.position = "none") +
+  labs(title = "SNVs")
+```
+
+**SAMPLEs:** There are `r length(sample_count)` total samples with data so far, `r length(setdiff(lofreq, ivar))` done with just lofreq, `r length(setdiff(ivar, lofreq))` done with just ivar, and `r length(intersect(lofreq, ivar))` with both.
+
+```{r, fig.width=6, fig.height=4}
+lofreq = df %>% 
+  filter(PIPELINE == 'lofreq') %>%
+  pull(SNV) %>% unique()
+
+ivar = df %>% 
+  filter(PIPELINE == 'ivar') %>%
+  pull(SNV) %>% unique()
+
+snv_count = df %>%
+  pull(SNV) %>% unique()
+
+x2 = list(lofreq = unique(paste0(df_lofreq$SNV, df_lofreq$SAMPLE)),
+         ivar = unique(paste0(df_ivar$SNV, df_ivar$SAMPLE)))
+
+ggVennDiagram(x2) +
+  scale_fill_gradient(low = "#F4FAFE", high = "#4981BF") +
+  scale_color_manual(values = c("black", "black")) +
+  theme(legend.position = "none") +
+  labs(title = "Sample + SNVs")
+```
+
+**SNVs:** There are `r length(snv_count)` total SNVs identified so far that are below 1% in 'lofreq' in at least one sample, or above 1% in 'ivar' in at least one sample, `r length(setdiff(lofreq, ivar))` found with just lofreq, `r length(setdiff(ivar, lofreq))` found with just ivar, and `r length(intersect(lofreq, ivar))` found with both.
+
+```{r, eval = F}
+df %>%
+  mutate(C = 1) %>%
+  group_by(SAMPLE, SNV, PIPELINE) %>%
+  summarise(S = sum(C)) %>%
+  arrange(SNV) %>%
+  pull(S) %>% table() %>% knitr::kable()
+```
+
+## Effects
+
+snpSIFT classifies the SNV effect into several categories. Here are the categories and their total frequencies in all samples. Only the "blue" categories are used in this analysis. Most the of "ivar" effect categories are removed with the `ALT_QUAL > 20` filtering. 
+
+```{r}
+lofreq_effects = readRDS(file = file.path(summary_output_file_path, "_summary_lofreq.Rds")) %>% 
+  filter(AF <= 0.01)
+
+ivar_effects = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds")) %>% 
+  filter(AF >= 0.01)
+
+rbind(lofreq_effects, ivar_effects) %>%
+  group_by(EFFECT, PIPELINE) %>%
+  count() %>%
+  ggplot(aes(x = n, y = EFFECT)) +
+    jak_theme() +
+    geom_col(position = "dodge", aes(fill = ifelse(EFFECT %in% keeper_effects, "#6495ed", "gray30"))) +
+    geom_text(aes(label = n, x = n), color = "#AAAAAA", hjust = 1) +
+    scale_fill_identity() +
+    facet_wrap(~PIPELINE) +
+    theme(legend.position = "none") + 
+    scale_x_continuous(labels=function(x) format(x, big.mark = ",", decimal.mark = ".", scientific = FALSE), trans = "log10") 
+```
+
+EFFECT | SO | Description
+--- | --- | ---
+missense_variant | [SO:0001583](http://www.sequenceontology.org/browser/current_svn/term/SO:0001583) | A sequence variant, that changes one or more bases, resulting in a different amino acid sequence but where the length is preserved.
+stop_gained | [SO:0001587](http://www.sequenceontology.org/browser/current_svn/term/SO:0001587) | A sequence variant whereby at least one base of a codon is changed, resulting in a premature stop codon, leading to a shortened polypeptide
+conservative_inframe_deletion | [SO:0001825](http://www.sequenceontology.org/miso/current_svn/term/SO:0001825) | An inframe decrease in cds length that deletes one or more entire codons from the coding sequence but does not change any remaining codons
+disruptive_inframe_deletion | [SO:0001826](http://www.sequenceontology.org/miso/current_svn/term/SO:0001826) | An inframe decrease in cds length that deletes bases from the coding sequence starting within an existing codon 
+conservative_inframe_insertion | [SO:0001823](http://www.sequenceontology.org/browser/current_svn/term/SO:0001823) | An inframe increase in cds length that inserts one or more codons into the coding sequence between existing codons
+disruptive_inframe_insertion | [SO:0001824](http://www.sequenceontology.org/browser/current_svn/term/SO:0001824) | An inframe increase in cds length that inserts one or more codons into the coding sequence within an existing codon.
+
+### ALT_AAs and EFFECT
+
+```{r}
+table(df$ALT_AA, df$EFFECT, df$PIPELINE) %>% 
+  as.data.frame() %>%
+  rename("EFFECT" = "Var2", "ALT_AA" = "Var1", "PIPELINE" = "Var3") %>%
+  filter(Freq > 0) %>%
+  format_dt()
+```
+
+## SNV Sample Count per Pipeline
+
+Each SNV was given a unique identifier with the gene name, the chromosome position, and the REF and ALT nucleotide, all separated by `.`. So, `S.23367.C.A` is in the S gene, chromosome position 23,367, and results in the reference "C" converted to a "A".
+
+Below is the Sample count of all unique SNVs in both the lofreq and ivar pipelines.
+
+```{r}
+df %>%
+  group_by(GENE, SNV, PIPELINE) %>%
+  count() %>%
+  pivot_wider(names_from = PIPELINE, values_from = n, values_fill = list(n = 0)) %>%
+  format_dt()
+```
+
+```{r, eval = F}
+df %>%
+  group_by(GENE, SNV, PIPELINE) %>%
+  count() %>%
+  pivot_wider(names_from = PIPELINE, values_from = n, values_fill = list(n = 0)) %>%
+  ggplot(aes(x = lofreq, y = ivar)) +
+    jak_theme() +
+    geom_hex()
+```
+
+# Visualization
+
+Just some examples of different plots that can be generated. These are typically static images, although some interaction could potentially be added later.
+
+## Heatmap
+
+<note class = "blue">Showing only the S protein.</note>
+
+```{r, fig.width=12, fig.height=14}
+df %>%
+  mutate(SAMPLE = paste(SAMPLE, PIPELINE, sep = "_")) %>%
+  filter(GENE == 'S') %>%
+  select(SAMPLE, SNV, AF) %>% 
+  pivot_wider(names_from = SAMPLE, values_from = AF, values_fill = list(AF = -1)) %>%
+  column_to_rownames('SNV') %>%
+  as.matrix() %>%
+  pheatmap::pheatmap(show_rownames = T,
+          #scale = "row",
+          border_color = NA,
+          color = viridis::viridis(100))
+```
+
+## NMDS
+
+### Between Pipelines
+
+```{r}
+df.v1 =  df %>%
+  mutate(SAMPLE = paste(SAMPLE, PIPELINE, sep = "_")) %>%
+  select(SAMPLE, SNV, AF) %>% 
+  unique() %>%
+  pivot_wider(names_from = SAMPLE, values_from = AF, values_fill = list(AF = 0)) %>%
+  column_to_rownames('SNV') %>%
+  as.matrix() %>% 
+  t() %>%
+  vegan::metaMDS(distance = "bray", trace = 0)
+
+SAMPLEs = as.data.frame(df.v1$points) %>%
+  rownames_to_column("SAMPLE") %>%
+  separate(SAMPLE, into = c('CADPH', "PIPELINE"), sep = "_", remove = F)
+
+SNVs = as.data.frame(df.v1$species)
+SNVs$SNV = rownames(SNVs)
+
+ggplot(SAMPLEs, aes(x = MDS1, y = MDS2)) +   
+  jak_theme() +
+  ggrepel::geom_text_repel(aes(label = CADPH), size = 3) +  
+  geom_point(data = SNVs, size = 1, alpha = 0.3) +  
+  geom_point(size = 3, pch = 24, alpha = 0.8, aes(fill = PIPELINE)) +
+  scale_fill_manual(values = palette_jak$bay(2)) +
+  #facet_wrap(~PHYLUM) +
+  theme(legend.position = "right") + 
+  labs(title = "Bray Curtis Dissimilarity")
+```
+
+The stress of the above plot is `r df.v1$stress * 100` (values > 10-15% are generally "high stress").
+
+### Between Samples
+
+If a SNV was found in a sample by both ivar and lofreq, the frequency is averaged. 
+
+```{r}
+df.v2 =  df %>%
+  select(SAMPLE, SNV, AF) %>% 
+  group_by(SAMPLE, SNV) %>%
+  summarize(AF_MEAN = mean(AF)) %>%
+  unique() %>%
+  pivot_wider(names_from = SAMPLE, values_from = AF_MEAN, values_fill = list(AF_MEAN = 0)) %>%
+  column_to_rownames('SNV') %>%
+  as.matrix() %>% 
+  t() %>%
+  vegan::metaMDS(distance = "bray", trace = 0)
+
+SAMPLEs = as.data.frame(df.v2$points) %>%
+  rownames_to_column("SAMPLE")
+
+SNVs = as.data.frame(df.v2$species)
+SNVs$SNV = rownames(SNVs)
+
+SNVs = SNVs %>%
+  mutate(PIPELINE = case_when(
+    SNV %in% df_lofreq$SNV & SNV %in% df_ivar$SNV ~ "BOTH",
+    SNV %in% df_lofreq$SNV ~ "lofreq",
+    SNV %in% df_ivar$SNV ~ "ivar"
+  ))
+
+ggplot(SAMPLEs, aes(x = MDS1, y = MDS2)) +   
+  jak_theme() +
+  ggrepel::geom_text_repel(aes(label = SAMPLE), size = 3) +  
+  geom_point(size = 5, pch = 24, alpha = 0.7, fill = "#6495ed") +
+  geom_point(data = SNVs, size = 2,pch = 21,  alpha = 0.5, aes(fill = PIPELINE)) +  
+  scale_fill_manual(values = palette_jak$bay(3)) +
+  theme(legend.position = "right")
+```
+
+The stress of the above plot is `r df.v2$stress * 100` (values > 10-15% are generally "high stress").
+
+# Summary Tables
+
+## Amplicon Summary
+
+This table is too big to display here. It is saved as a tab-delimited file here: ``r file.path(summary_output_file_path, "_amplicon_summary.txt")``.
+
+```{r}
+# https://martinctc.github.io/blog/vignette-downloadable-tables-in-rmarkdown-with-the-dt-package/
+as = df %>%
+  #filter(EFFECT %in% keeper_effects | PIPELINE == 'ivar') %>%
+  filter(EFFECT %in% keeper_effects) %>%
+  select(SAMPLE, PIPELINE, POS, SAMPLE, REF, ALT, AF, GENE, REF_AA, ALT_AA, AA_POS, SNV) %>%
+  group_by(PIPELINE, POS, REF, ALT, GENE, REF_AA, ALT_AA, AA_POS, SNV) %>%
+  summarize(SAMPLE_COUNT = n(), AF_MEAN = mean(AF), AF_SD = sd(AF))
+
+as %>%
+  write_delim(file.path(summary_output_file_path, "_amplicon_summary.txt"), delim = "\t")
+
+# as %>%
+#   format_dt()
+```
+
+## Amplicon Result
+
+This table is too big to display here. It is saved as a tab-delimited file here: ``r file.path(summary_output_file_path, "_amplicon_result.txt")``.
+
+```{r}
+ar = df %>%
+  #filter(EFFECT %in% keeper_effects | PIPELINE == 'ivar') %>%
+  filter(EFFECT %in% keeper_effects) %>%
+  select(POS, SAMPLE, PIPELINE, REF, ALT, DP, AF, GENE, REF_AA, ALT_AA, AA_POS, SNV)
+
+ar %>%
+  write_delim(file.path(summary_output_file_path, "_amplicon_result.txt"), delim = "\t")
+# 
+# ar %>%
+#   format_dt()
+```
+
+# outbreak.info API
+
+```{r}
+
+get_SNV = function(SNV) {
+
+  require(tidyverse)
+  require(jsonlite)
+  
+  print(SNV)
+  
+  CA = tryCatch(data.frame(fromJSON(paste0('https://api.outbreak.info/genomics/prevalence-by-location?location_id=USA_US-CA&mutations=', SNV))),
+          error = function(e)
+          data.frame("success" = TRUE))
+  
+  USA = tryCatch(data.frame(fromJSON(paste0('https://api.outbreak.info/genomics/prevalence-by-location?location_id=USA&mutations=', SNV))),
+          error = function(e)
+          data.frame("success" = TRUE))
+  
+  GLOBAL = tryCatch(data.frame(fromJSON(paste0('https://api.outbreak.info/genomics/prevalence-by-location?mutations=', SNV))),
+          error = function(e)
+          data.frame("success" = TRUE))
+  
+  l = list("CA" = data.frame(CA), 
+            "USA" = data.frame(USA), 
+            "GLOBAL" = data.frame(GLOBAL))
+  
+  df = bind_rows(l, .id = "LOCATION")
+  names(df)
+  SNV2 = gsub(x = SNV, pattern = ":", replacement = ".") 
+  names(df) = gsub(x = names(df), pattern = paste0("results.", SNV2, "."), replacement = "") 
+  
+  df = df %>%
+    as_tibble() %>%
+    mutate(date = as.Date(date), SNV = SNV)
+  
+  return(df)
+}
+
+location_palette = c("CA" = "#00496F", "USA" = "#EDD746", "GLOBAL" = "#DD4124")
+```
+
+Note, only mutations with the 'missense_variant' `EFFECT` are searchable in the API. All others are not included below.
+
+```{r}
+df %>%
+  #filter(PIPELINE == "lofreq") %>%
+  filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
+  arrange(desc(AF)) %>%
+  select(SAMPLE, EFFECT, API_CODE, SNV, PIPELINE, GENE, POS, REF, ALT, AF, REF_AA, ALT_AA) %>%
+  format_dt()
+```
+
+## S Gene
+
+```{r, eval = overwrite_Rds_files}
+top_lofreq = df %>%
+  filter(PIPELINE == "lofreq", GENE == "S") %>%
+  filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
+  arrange(desc(AF)) %>%
+  select(API_CODE) %>%
+  unique() %>%
+  head(api_top_count) %>%
+  pull(API_CODE)
+
+results = lapply(top_lofreq, get_SNV)
+saveRDS(results, file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
+
+top_ivar = df %>%
+  filter(PIPELINE == "ivar", GENE == "S") %>%
+  filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
+  arrange(desc(AF)) %>%
+  select(API_CODE) %>%
+  unique() %>%
+  head(api_top_count) %>%
+  pull(API_CODE)
+
+results = lapply(top_ivar, get_SNV)
+saveRDS(results, file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
+```
+
+```{r, fig.width=12, fig.height=12}
+lofreq_results = readRDS(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
+
+a = bind_rows(lofreq_results) %>% 
+  filter(total_count > 0) %>%
+  group_by(SNV) %>%
+  mutate(adj_proportion = proportion / max(proportion)) %>%
+  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = adj_proportion)) +
+    jak_theme() +
+    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5) +
+    scale_fill_manual(values = location_palette) +
+    scale_color_manual(values = location_palette) +
+    labs(title = "Lofreq Proportions (free y-axis scale)") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+
+ivar_results = readRDS(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
+
+b = bind_rows(ivar_results) %>% 
+  filter(total_count > 0) %>%
+  group_by(SNV) %>%
+  mutate(adj_proportion = proportion / max(proportion)) %>%
+  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = adj_proportion)) +
+    jak_theme() +
+    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5) +
+    scale_fill_manual(values = location_palette) +
+    scale_color_manual(values = location_palette) +
+    labs(title = "ivar Proportions (free y-axis scale)") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+
+a + b
+```
+
+```{r, fig.width=12, fig.height=10}
+lofreq_results = readRDS(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
+
+c = bind_rows(lofreq_results) %>% 
+  filter(total_count > 0) %>%
+  group_by(SNV) %>%
+  ggplot(aes(x = date, y = 100 * proportion, fill = LOCATION, color = LOCATION)) +
+    jak_theme() +
+    geom_line(aes(group = LOCATION), alpha = 0.8) +
+    scale_fill_manual(values = location_palette) +
+    scale_color_manual(values = location_palette) +
+    facet_wrap(~SNV, ncol = 2, scales = "free_y") + 
+    labs(title = "Lofreq Proportions (free y-axis scale)", y = "Proportion (%)", x = "Month-Year") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+
+ivar_results = readRDS(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
+
+d = bind_rows(ivar_results) %>% 
+  filter(total_count > 0) %>%
+  group_by(SNV) %>%
+  ggplot(aes(x = date, y = 100 * proportion, fill = LOCATION, color = LOCATION)) +
+    jak_theme() +
+    geom_line(aes(group = LOCATION), alpha = 0.8) +
+    scale_fill_manual(values = location_palette) +
+    scale_color_manual(values = location_palette) +
+    facet_wrap(~SNV, ncol = 2, scales = "free_y") + 
+    labs(title = "ivar Proportions (free y-axis scale)", y = "Proportion (%)", x = "Month-Year") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+
+c + d
+```
+
+```{r, fig.width=10, fig.height=14, eval = F}
+lofreq_results = readRDS(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
+
+c = bind_rows(lofreq_results) %>% 
+  filter(total_count > 0) %>%
+  group_by(SNV) %>%
+  mutate(adj_proportion = proportion / max(proportion)) %>%
+  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = proportion)) +
+    jak_theme() +
+    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5, scale = 1) +
+    scale_fill_manual(values = location_palette) +
+    scale_color_manual(values = location_palette) +
+    labs(title = "Lofreq Proportions (fixed y-axis scale)") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+
+ivar_results = readRDS(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
+
+d = bind_rows(ivar_results) %>% 
+  filter(total_count > 0) %>%
+  group_by(SNV) %>%
+  mutate(adj_proportion = proportion / max(proportion)) %>%
+  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = proportion)) +
+    jak_theme() +
+    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5, scale = 1) +
+    scale_fill_manual(values = location_palette) +
+    scale_color_manual(values = location_palette) +
+    labs(title = "ivar Proportions (fixed y-axis scale)") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+
+c + d
+```
+
+```{r, fig.width=12, fig.height=10}
+m = bind_rows(lofreq_results) %>%
+      rbind(bind_rows(ivar_results)) %>%
+      group_by(LOCATION, SNV) %>%
+      filter(proportion == max(proportion)) %>%
+      mutate(TYPE = "PEAK", PEAK_PERCENT = proportion, CODE = paste(LOCATION, SNV, sep = "_")) %>%
+      select(LOCATION, date, SNV, TYPE, PEAK_PERCENT, CODE) %>%
+      unique()
+
+m_light = m %>%
+  ungroup() %>%
+  select(CODE, PEAK_PERCENT)
+
+f = bind_rows(lofreq_results) %>%
+  rbind(bind_rows(ivar_results)) %>%
+  group_by(LOCATION, SNV) %>%
+  filter(lineage_count > 0) %>%
+  filter(date == min(date)) %>%
+  mutate(TYPE = "FIRST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
+  select(LOCATION, date, SNV, TYPE, CODE) %>%
+  unique()
+
+l = bind_rows(lofreq_results) %>%
+  rbind(bind_rows(ivar_results)) %>%
+  group_by(LOCATION, SNV) %>%
+  filter(lineage_count > 0) %>%
+  filter(date == max(date)) %>%
+  mutate(TYPE = "LAST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
+  select(LOCATION, date, SNV, TYPE, CODE) %>%
+  unique()
+
+rbind(f, l, m) %>%
+  select(SNV, LOCATION, date, TYPE, CODE) %>%
+  pivot_wider(values_from = date, names_from = TYPE) %>%
+  left_join(m_light, by = "CODE") %>%
+  select(-CODE) %>%
+  mutate(PEAK_PERCENT = scales::percent(PEAK_PERCENT, accuracy = .01)) %>%
+  format_dt()
+
+rbind(m, f, l) %>%
+  mutate(LOCATION = as.factor(LOCATION), LOCATION = fct_relevel(LOCATION, c("CA", "USA", "GLOBAL"))) %>%
+  mutate(SNV = as.factor(SNV), SNV = fct_relevel(SNV, rev(levels(SNV)))) %>%
+  ggplot(aes(x = date, y = LOCATION, fill = TYPE)) +
+    jak_theme() +
+    geom_point(pch = 21, size = 3, alpha = 0.7) +
+    scale_fill_manual(values = palette_jak$bay(3)) +
+    facet_wrap(~SNV, ncol = 3) +
+    labs(title = "First, last and peak occurrence", x = "Month-Year") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+```
+
+```{r, fig.width=12, fig.height=10}
+rbind(m, f, l) %>%
+  mutate(LOCATION = as.factor(LOCATION), LOCATION = fct_relevel(LOCATION, c("GLOBAL", "USA", "CA"))) %>%
+  mutate(SNV = as.factor(SNV), SNV = fct_relevel(SNV, rev(levels(SNV)))) %>%
+  mutate(TYPE = fct_relevel(TYPE, 'FIRST', 'PEAK', 'LAST')) %>%
+  arrange(TYPE) %>% # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
+  ggplot(aes(x = date, y = TYPE, color = LOCATION)) +
+    jak_theme() +
+    geom_path(aes(group = LOCATION), size = 1, alpha = 0.7) + # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
+    geom_point(size = 2, alpha = 0.7) +
+    scale_color_manual(values = location_palette) +
+    facet_wrap(~SNV, ncol = 3) +
+    labs(title = "First, peak and last occurrence", x = "Month-Year") + 
+    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+```
+
+# Session Info
+
+```{r}
+df_sess = sessioninfo::platform_info() %>%
+  unlist() %>%
+  as.data.frame() %>%
+  rownames_to_column()
+
+colnames(df_sess) = c("name", "value")
+  
+df_sess%>%
+  knitr::kable()
+
+sessioninfo::package_info() %>%
+  as_tibble() %>%
+  filter(attached == TRUE) %>%
+  #arrange(desc(attached)) %>%
+  select(package, loadedversion, source, date, attached) %>%
+  format_dt(row_count = 20)
+```

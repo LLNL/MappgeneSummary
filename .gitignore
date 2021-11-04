@@ -1,0 +1,6 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+inst/rmd/.DS_Store
+.DS_Store

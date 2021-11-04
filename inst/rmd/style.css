@@ -1,0 +1,82 @@
+/* Whole document: */
+
+body {
+  font-family: Helvetica;
+  font-size: 12pt;
+}
+
+/*
+https://datatables.net/forums/discussion/66743/change-text-size-in-datatable
+table.dataTable td {
+  font-size: 8pt;
+}
+table.dataTable tr.dtrg-level-0 td {
+  font-size: 8pt;
+}
+*/
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: normal;
+  margin: 1em 0 .6em 0;
+	padding: 0 0 0 20px;
+	position: relative;
+} 
+
+h1:after,
+h2:after,
+h3:after,
+h4:after {
+	position: absolute;
+	content: "";
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 5px;
+	border-radius: 3px;
+  background: #F1C400; 
+	/* box-shadow:
+		inset 0 2px 1px rgba(0,0,0,0.5),
+		0 1px 1px rgba(255,255,255,0.3); */
+}
+
+h1 {
+  color: #F1C400;
+  font-style: bold;
+	font-size: 180%;
+}
+
+h2 {
+  color: #F1C400;
+  font-style: italic;
+	font-size: 160%;
+}
+
+h3 {
+  color: #F1C400;
+  font-style: italic;
+	font-size: 140%;
+}
+
+h4 {
+  color: #F1C400;
+  font-style: italic;
+	font-size: 120%;
+}
+
+note {
+  margin: 1px 1px 1px 1px;
+  border: 2px solid #BBBBBB;
+  border-radius: 5px;
+  padding: 2px 5% 1px 5%;
+  display: inline-block;
+}
+
+.blue {
+  color: #4796BF;
+  border: 2px solid #4796BF;
+}
+
+.red {
+  color:#D42828;
+  border: 2px solid #D42828;
+}
