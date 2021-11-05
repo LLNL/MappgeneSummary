@@ -16,7 +16,7 @@ output:
 params:
   echo_type: FALSE
   mappgene_file_path: test
-  summary_output_file_path: "."
+  summary_output_file_path: "." 
   overwrite_Rds_files: TRUE
   api_top_count: 10
 ---
@@ -69,8 +69,8 @@ _summary_lofreq.Rds | R data | The lofreq data (tibble)
 _summary_ivar.Rds | R data | The ivar data (tibble)
 _summary_DF.Rds | R data | The "final" data use for all analysis (tibble)
 _summary_DF.txt | tab-delimited | The "final" data use for all analysis 
-_lofreq_top_outbreak_results.Rds | R data | The Outbreak API results from the top lofreq iSNVs (tibble)
-_ivar_top_outbreak_results.Rds | R data | The Outbreak API results from the top ivar iSNVs (tibble)
+_lofreq_top_outbreak_results.txt | tab-delimited | The Outbreak API results from the top lofreq iSNVs
+_ivar_top_outbreak_results.txt | tab-delimited | The Outbreak API results from the top ivar iSNVs
 _amplicon_summary.txt | tab-delimited | Attempt at re-creating a specific report for Excel analysis
 _amplicon_results.txt | tab-delimited | Attempt at re-creating a specific report for Excel analysis
 
@@ -104,16 +104,6 @@ saveRDS(df, file = file.path(summary_output_file_path, "_summary_lofreq.Rds"))
 rm(df)
 ```
 
-```
-# LEGACY CODE, no longer implemented
-Renaming snpSIFT columns to match iVar output.. 
-
-Original | New
---- | ---
-DP | TOTAL_DP
-AF | ALT_FREQ
-```
-
 The `ALT_DP` column has been added as `as.integer(DP * AF)`.
 
 Also, converting the `HGVS_P` column to `REF_AA` and `ALT_AA`, and removing any synonymous mutations.
@@ -143,68 +133,6 @@ df_lofreq = df_lofreq %>%
 ## iVar (iSNVs > 1%)
 
 This is the "iVar -> snpEFF/snpSIFT" workflow, and these results will have the "ivar" `PIPELINE` string.
-
-```{r, eval = F}
-# LEGACY CODE FOR WHEN USING THE TSVs... no longer used
-
-# files = list.files(path = summary_output_file_path, pattern = "*.ivar.final.masked.variants.tsv$", recursive = TRUE, full.names = T)
-# 
-# df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
-#   bind_rows(.id = "id") %>%
-#   mutate(FILE = basename(id)) %>% 
-#   mutate(SAMPLE = str_replace(FILE, ".ivar.final.masked.variants.tsv", "")) %>%
-#   mutate(SAMPLE = str_replace(SAMPLE, "LLNL_", ""))
-# 
-# df = df %>%
-#   select(-id, -REGION, -FILE) %>%
-#   rename("GENE" = "GFF_FEATURE") %>%
-#   unique()%>%
-#   mutate(PIPELINE = "ivar")
-# 
-# saveRDS(df, file = file.path(summary_output_file_path, "_summary_ivar.Rds"))
-# rm(df)
-# 
-# df_ivar = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds")) %>%
-#   filter(PASS == TRUE) %>%
-#   filter(ALT_FREQ >= 0.01) %>%
-#   filter(ALT_QUAL > 20) %>%
-#   filter(REF_AA != ALT_AA) %>%
-#   select(-PASS, -REF_QUAL, -ALT_QUAL, -REF_RV, -ALT_RV)
-# 
-# ivar_genes = c("cds-YP_009724389.1",
-#          "cds-YP_009725295.1",
-#          "cds-YP_009724390.1",
-#          "cds-YP_009724391.1",
-#          "cds-YP_009724392.1",
-#          "cds-YP_009724393.1",
-#          "cds-YP_009724394.1",
-#          "cds-YP_009724395.1",
-#          "cds-YP_009724396.1",
-#          "cds-YP_009725296.1",
-#          "cds-YP_009724397.2",
-#          "cds-YP_009725255.1")
-# 
-# lofreq_genes = c("ORF1ab",
-#            "ORF1ab",
-#            "S",
-#            "ORF3a",
-#            "E",
-#            "M",
-#            "ORF6",
-#            "ORF7a",
-#            "ORF8",
-#            "ORF7b",
-#            "N",
-#            "ORF10"
-#            )
-# 
-# replacements = data.frame("ivar" = ivar_genes, "lofreq" = lofreq_genes)
-# 
-# replacements %>% format_dt()
-# 
-# df_ivar = df_ivar %>%
-#   mutate(GENE = str_replace_all(GENE, setNames(lofreq_genes, ivar_genes)))
-```
 
 iVar output was processed according to Jimmy's pipeline
 
@@ -553,42 +481,6 @@ ar %>%
 # outbreak.info API
 
 ```{r}
-
-get_SNV = function(SNV) {
-
-  require(tidyverse)
-  require(jsonlite)
-  
-  print(SNV)
-  
-  CA = tryCatch(data.frame(fromJSON(paste0('https://api.outbreak.info/genomics/prevalence-by-location?location_id=USA_US-CA&mutations=', SNV))),
-          error = function(e)
-          data.frame("success" = TRUE))
-  
-  USA = tryCatch(data.frame(fromJSON(paste0('https://api.outbreak.info/genomics/prevalence-by-location?location_id=USA&mutations=', SNV))),
-          error = function(e)
-          data.frame("success" = TRUE))
-  
-  GLOBAL = tryCatch(data.frame(fromJSON(paste0('https://api.outbreak.info/genomics/prevalence-by-location?mutations=', SNV))),
-          error = function(e)
-          data.frame("success" = TRUE))
-  
-  l = list("CA" = data.frame(CA), 
-            "USA" = data.frame(USA), 
-            "GLOBAL" = data.frame(GLOBAL))
-  
-  df = bind_rows(l, .id = "LOCATION")
-  names(df)
-  SNV2 = gsub(x = SNV, pattern = ":", replacement = ".") 
-  names(df) = gsub(x = names(df), pattern = paste0("results.", SNV2, "."), replacement = "") 
-  
-  df = df %>%
-    as_tibble() %>%
-    mutate(date = as.Date(date), SNV = SNV)
-  
-  return(df)
-}
-
 location_palette = c("CA" = "#00496F", "USA" = "#EDD746", "GLOBAL" = "#DD4124")
 ```
 
@@ -596,7 +488,6 @@ Note, only mutations with the 'missense_variant' `EFFECT` are searchable in the 
 
 ```{r}
 df %>%
-  #filter(PIPELINE == "lofreq") %>%
   filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
@@ -606,7 +497,7 @@ df %>%
 
 ## S Gene
 
-```{r, eval = overwrite_Rds_files}
+```{r, eval = overwrite_Rds_files, message=TRUE}
 top_lofreq = df %>%
   filter(PIPELINE == "lofreq", GENE == "S") %>%
   filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
@@ -617,8 +508,11 @@ top_lofreq = df %>%
   head(api_top_count) %>%
   pull(API_CODE)
 
-results = lapply(top_lofreq, get_SNV)
-saveRDS(results, file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
+top_lofreq_results = bind_rows(get_state_outbreak_info(states = "CA", SNVs = top_lofreq),
+         get_country_outbreak_info(countries = "USA", SNVs = top_lofreq),
+         get_global_outbreak_info(SNVs = top_lofreq))
+
+write_delim(top_lofreq_results, file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.txt"), delim = "\t")
 
 top_ivar = df %>%
   filter(PIPELINE == "ivar", GENE == "S") %>%
@@ -630,14 +524,15 @@ top_ivar = df %>%
   head(api_top_count) %>%
   pull(API_CODE)
 
-results = lapply(top_ivar, get_SNV)
-saveRDS(results, file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
+top_ivar_results = bind_rows(get_state_outbreak_info(states = "CA", SNVs = top_ivar),
+         get_country_outbreak_info(countries = "USA", SNVs = top_ivar),
+         get_global_outbreak_info(SNVs = top_ivar))
+
+write_delim(top_ivar_results, file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.txt"), delim = "\t")
 ```
 
 ```{r, fig.width=12, fig.height=12}
-lofreq_results = readRDS(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
-
-a = bind_rows(lofreq_results) %>% 
+a = top_lofreq_results %>% 
   filter(total_count > 0) %>%
   group_by(SNV) %>%
   mutate(adj_proportion = proportion / max(proportion)) %>%
@@ -649,9 +544,7 @@ a = bind_rows(lofreq_results) %>%
     labs(title = "Lofreq Proportions (free y-axis scale)") + 
     scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
 
-ivar_results = readRDS(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
-
-b = bind_rows(ivar_results) %>% 
+b = top_ivar_results %>% 
   filter(total_count > 0) %>%
   group_by(SNV) %>%
   mutate(adj_proportion = proportion / max(proportion)) %>%
@@ -667,9 +560,7 @@ a + b
 ```
 
 ```{r, fig.width=12, fig.height=10}
-lofreq_results = readRDS(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
-
-c = bind_rows(lofreq_results) %>% 
+c = top_lofreq_results %>% 
   filter(total_count > 0) %>%
   group_by(SNV) %>%
   ggplot(aes(x = date, y = 100 * proportion, fill = LOCATION, color = LOCATION)) +
@@ -681,9 +572,7 @@ c = bind_rows(lofreq_results) %>%
     labs(title = "Lofreq Proportions (free y-axis scale)", y = "Proportion (%)", x = "Month-Year") + 
     scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
 
-ivar_results = readRDS(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
-
-d = bind_rows(ivar_results) %>% 
+d = top_ivar_results %>% 
   filter(total_count > 0) %>%
   group_by(SNV) %>%
   ggplot(aes(x = date, y = 100 * proportion, fill = LOCATION, color = LOCATION)) +
@@ -698,41 +587,8 @@ d = bind_rows(ivar_results) %>%
 c + d
 ```
 
-```{r, fig.width=10, fig.height=14, eval = F}
-lofreq_results = readRDS(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.Rds"))
-
-c = bind_rows(lofreq_results) %>% 
-  filter(total_count > 0) %>%
-  group_by(SNV) %>%
-  mutate(adj_proportion = proportion / max(proportion)) %>%
-  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = proportion)) +
-    jak_theme() +
-    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5, scale = 1) +
-    scale_fill_manual(values = location_palette) +
-    scale_color_manual(values = location_palette) +
-    labs(title = "Lofreq Proportions (fixed y-axis scale)") + 
-    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
-
-ivar_results = readRDS(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.Rds"))
-
-d = bind_rows(ivar_results) %>% 
-  filter(total_count > 0) %>%
-  group_by(SNV) %>%
-  mutate(adj_proportion = proportion / max(proportion)) %>%
-  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = proportion)) +
-    jak_theme() +
-    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5, scale = 1) +
-    scale_fill_manual(values = location_palette) +
-    scale_color_manual(values = location_palette) +
-    labs(title = "ivar Proportions (fixed y-axis scale)") + 
-    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
-
-c + d
-```
-
 ```{r, fig.width=12, fig.height=10}
-m = bind_rows(lofreq_results) %>%
-      rbind(bind_rows(ivar_results)) %>%
+m = bind_rows(top_lofreq_results, top_ivar_results) %>%
       group_by(LOCATION, SNV) %>%
       filter(proportion == max(proportion)) %>%
       mutate(TYPE = "PEAK", PEAK_PERCENT = proportion, CODE = paste(LOCATION, SNV, sep = "_")) %>%
@@ -743,8 +599,7 @@ m_light = m %>%
   ungroup() %>%
   select(CODE, PEAK_PERCENT)
 
-f = bind_rows(lofreq_results) %>%
-  rbind(bind_rows(ivar_results)) %>%
+f = bind_rows(top_lofreq_results, top_ivar_results) %>%
   group_by(LOCATION, SNV) %>%
   filter(lineage_count > 0) %>%
   filter(date == min(date)) %>%
@@ -752,8 +607,7 @@ f = bind_rows(lofreq_results) %>%
   select(LOCATION, date, SNV, TYPE, CODE) %>%
   unique()
 
-l = bind_rows(lofreq_results) %>%
-  rbind(bind_rows(ivar_results)) %>%
+l = bind_rows(top_lofreq_results, top_ivar_results) %>%
   group_by(LOCATION, SNV) %>%
   filter(lineage_count > 0) %>%
   filter(date == max(date)) %>%
