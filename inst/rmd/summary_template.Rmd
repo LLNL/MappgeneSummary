@@ -531,60 +531,18 @@ top_ivar_results = bind_rows(get_state_outbreak_info(states = "CA", SNVs = top_i
 write_delim(top_ivar_results, file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.txt"), delim = "\t")
 ```
 
-```{r, fig.width=12, fig.height=12}
-a = top_lofreq_results %>% 
-  filter(total_count > 0) %>%
-  group_by(SNV) %>%
-  mutate(adj_proportion = proportion / max(proportion)) %>%
-  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = adj_proportion)) +
-    jak_theme() +
-    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5) +
-    scale_fill_manual(values = location_palette) +
-    scale_color_manual(values = location_palette) +
-    labs(title = "Lofreq Proportions (free y-axis scale)") + 
-    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+```{r, fig.width=12, fig.height=10}
+a = plot_outbreak_trends(top_lofreq_results, title = "Lofreq Proportions (free y-axis scale)") +
+      jak_theme() +
+      scale_fill_manual(values = location_palette) +
+      scale_color_manual(values = location_palette)
 
-b = top_ivar_results %>% 
-  filter(total_count > 0) %>%
-  group_by(SNV) %>%
-  mutate(adj_proportion = proportion / max(proportion)) %>%
-  ggplot(aes(x = date, y = SNV, fill = LOCATION, color = LOCATION, height = adj_proportion)) +
-    jak_theme() +
-    ggridges::geom_ridgeline(alpha = 0.2, size = 0.5) +
-    scale_fill_manual(values = location_palette) +
-    scale_color_manual(values = location_palette) +
-    labs(title = "ivar Proportions (free y-axis scale)") + 
-    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+b = plot_outbreak_trends(top_ivar_results, title = "iVar Proportions (free y-axis scale)") +
+      jak_theme() +
+      scale_fill_manual(values = location_palette) +
+      scale_color_manual(values = location_palette)
 
 a + b
-```
-
-```{r, fig.width=12, fig.height=10}
-c = top_lofreq_results %>% 
-  filter(total_count > 0) %>%
-  group_by(SNV) %>%
-  ggplot(aes(x = date, y = 100 * proportion, fill = LOCATION, color = LOCATION)) +
-    jak_theme() +
-    geom_line(aes(group = LOCATION), alpha = 0.8) +
-    scale_fill_manual(values = location_palette) +
-    scale_color_manual(values = location_palette) +
-    facet_wrap(~SNV, ncol = 2, scales = "free_y") + 
-    labs(title = "Lofreq Proportions (free y-axis scale)", y = "Proportion (%)", x = "Month-Year") + 
-    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
-
-d = top_ivar_results %>% 
-  filter(total_count > 0) %>%
-  group_by(SNV) %>%
-  ggplot(aes(x = date, y = 100 * proportion, fill = LOCATION, color = LOCATION)) +
-    jak_theme() +
-    geom_line(aes(group = LOCATION), alpha = 0.8) +
-    scale_fill_manual(values = location_palette) +
-    scale_color_manual(values = location_palette) +
-    facet_wrap(~SNV, ncol = 2, scales = "free_y") + 
-    labs(title = "ivar Proportions (free y-axis scale)", y = "Proportion (%)", x = "Month-Year") + 
-    scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
-
-c + d
 ```
 
 ```{r, fig.width=12, fig.height=10}
