@@ -3,5 +3,8 @@
 export(copy_summary_template)
 export(get_country_outbreak_info)
 export(get_global_outbreak_info)
+export(get_outbreak_latest)
+export(get_outbreak_peak)
+export(get_outbreak_start)
 export(get_state_outbreak_info)
 export(plot_outbreak_trends)

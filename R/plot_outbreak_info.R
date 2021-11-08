@@ -9,6 +9,7 @@
 #'
 #' @examples
 #' plot_outbreak_trends(top20_results)
+#' get_state_outbreak_info(states = c("CA", "OR"), SNVs = "S:Y1155H") %>% plot_outbreak_trends()
 
 
 plot_outbreak_trends = function(df, title = "Proportions (free y-axis scale)") {

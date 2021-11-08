@@ -547,44 +547,30 @@ a + b
 
 ```{r, fig.width=12, fig.height=10}
 m = bind_rows(top_lofreq_results, top_ivar_results) %>%
-      group_by(LOCATION, SNV) %>%
-      filter(proportion == max(proportion)) %>%
-      mutate(TYPE = "PEAK", PEAK_PERCENT = proportion, CODE = paste(LOCATION, SNV, sep = "_")) %>%
-      select(LOCATION, date, SNV, TYPE, PEAK_PERCENT, CODE) %>%
-      unique()
+      get_outbreak_peak()
 
 m_light = m %>%
   ungroup() %>%
-  select(CODE, PEAK_PERCENT)
+  select(CODE, PERCENT)
 
 f = bind_rows(top_lofreq_results, top_ivar_results) %>%
-  group_by(LOCATION, SNV) %>%
-  filter(lineage_count > 0) %>%
-  filter(date == min(date)) %>%
-  mutate(TYPE = "FIRST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
-  select(LOCATION, date, SNV, TYPE, CODE) %>%
-  unique()
+  get_outbreak_start()
 
 l = bind_rows(top_lofreq_results, top_ivar_results) %>%
-  group_by(LOCATION, SNV) %>%
-  filter(lineage_count > 0) %>%
-  filter(date == max(date)) %>%
-  mutate(TYPE = "LAST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
-  select(LOCATION, date, SNV, TYPE, CODE) %>%
-  unique()
+  get_outbreak_latest()
 
-rbind(f, l, m) %>%
-  select(SNV, LOCATION, date, TYPE, CODE) %>%
-  pivot_wider(values_from = date, names_from = TYPE) %>%
+bind_rows(f, l, m) %>%
+  select(SNV, LOCATION, DATE, TYPE, CODE) %>%
+  pivot_wider(values_from = DATE, names_from = TYPE) %>%
   left_join(m_light, by = "CODE") %>%
   select(-CODE) %>%
-  mutate(PEAK_PERCENT = scales::percent(PEAK_PERCENT, accuracy = .01)) %>%
+  rename("PEAK_PERCENT" = "PERCENT") %>%
   format_dt()
 
-rbind(m, f, l) %>%
+bind_rows(m, f, l) %>%
   mutate(LOCATION = as.factor(LOCATION), LOCATION = fct_relevel(LOCATION, c("CA", "USA", "GLOBAL"))) %>%
   mutate(SNV = as.factor(SNV), SNV = fct_relevel(SNV, rev(levels(SNV)))) %>%
-  ggplot(aes(x = date, y = LOCATION, fill = TYPE)) +
+  ggplot(aes(x = DATE, y = LOCATION, fill = TYPE)) +
     jak_theme() +
     geom_point(pch = 21, size = 3, alpha = 0.7) +
     scale_fill_manual(values = palette_jak$bay(3)) +
@@ -594,12 +580,12 @@ rbind(m, f, l) %>%
 ```
 
 ```{r, fig.width=12, fig.height=10}
-rbind(m, f, l) %>%
+bind_rows(m, f, l) %>%
   mutate(LOCATION = as.factor(LOCATION), LOCATION = fct_relevel(LOCATION, c("GLOBAL", "USA", "CA"))) %>%
   mutate(SNV = as.factor(SNV), SNV = fct_relevel(SNV, rev(levels(SNV)))) %>%
   mutate(TYPE = fct_relevel(TYPE, 'FIRST', 'PEAK', 'LAST')) %>%
   arrange(TYPE) %>% # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
-  ggplot(aes(x = date, y = TYPE, color = LOCATION)) +
+  ggplot(aes(x = DATE, y = TYPE, color = LOCATION)) +
     jak_theme() +
     geom_path(aes(group = LOCATION), size = 1, alpha = 0.7) + # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
     geom_point(size = 2, alpha = 0.7) +
