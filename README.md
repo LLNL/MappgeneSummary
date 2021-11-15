@@ -41,8 +41,8 @@ params:
   api_top_count: 10
 ```
 
-`echo_type`: If `TRUE`, will show the code blocks in the html file.
-`mappgene_file_path`: If set to 'test' it will use the test files included in the package. Otherwise, change this to the path where your mappgene output is located.
-`summary_output_file_path`: The path location of the output files.
-`overwrite_Rds_files`: Some code blocks take time to run. Set to `TRUE` to run all code blocks, or to `FALSE` to use saved Rds files.
-`api_top_count`: Number of Outbreak API SNVs to generate plots for.
+- `echo_type`: If `TRUE`, will show the code blocks in the html file.
+- `mappgene_file_path`: If set to 'test' it will use the test files included in the package. Otherwise, change this to the path where your mappgene output is located.
+- `summary_output_file_path`: The path location of the output files.
+- `overwrite_Rds_files`: Some code blocks take time to run. Set to `TRUE` to run all code blocks, or to `FALSE` to use saved Rds files.
+- `api_top_count`: Number of Outbreak API SNVs to generate plots for.
