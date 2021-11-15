@@ -532,6 +532,10 @@ write_delim(top_ivar_results, file = file.path(summary_output_file_path, "_ivar_
 ```
 
 ```{r, fig.width=12, fig.height=10}
+top_lofreq_results = read_delim(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.txt"), delim = "\t")
+
+top_ivar_results = read_delim(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.txt"), delim = "\t")
+
 a = plot_outbreak_trends(top_lofreq_results, title = "Lofreq Proportions (free y-axis scale)") +
       jak_theme() +
       scale_fill_manual(values = location_palette) +
