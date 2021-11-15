@@ -4,10 +4,15 @@
 
 ```
 install_github("jeffkimbrel/MappgeneSummary")
+```
 
-# There are a few functions and color palettes from the `jakR` package. Install from github...
+Additionally, there are a few functions and color palettes from the `jakR` package. Install from github...
+
+```
 install_github("jeffkimbrel/jakR")
 ```
+
+# Examples
 
 ```
 get_state_outbreak_info(states = c("ca", "OR"), SNVs = c("S:y1155H", "S:P681H"))
