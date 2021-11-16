@@ -121,12 +121,8 @@ df_lofreq = readRDS(file = file.path(summary_output_file_path, "_summary_lofreq.
   filter(EFFECT %in% keeper_effects) %>%
   filter(AF <= 0.01)
 
-patterns = c("p.", "Phe", "Leu", "Ile", "Met", "Val", "Ser", "Pro", "Thr", "Ala", "Tyr", "His", "Gln", "Asn", "Lys", "Asp", "Glu", "Cys", "Trp", "Arg", "Gly")
-replacement = c("", "F", "L", "I", "M", "V", "S", "P", "T", "A", "Y", "H", "Q", "N", "K", "D", "E", "C", "W", "R", "G")
-
 df_lofreq = df_lofreq %>%
-  mutate(HGVS_P = str_replace_all(HGVS_P, setNames(replacement, patterns))) %>%
-  separate(HGVS_P, sep = "[0-9]+", into = c("REF_AA", "ALT_AA"), remove = F) %>%
+  parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
 ```
 
@@ -178,8 +174,7 @@ df_ivar = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds"
   filter(AF >= 0.01)
 
 df_ivar = df_ivar %>%
-  mutate(HGVS_P = str_replace_all(HGVS_P, setNames(replacement, patterns))) %>%
-  separate(HGVS_P, sep = "[0-9]+", into = c("REF_AA", "ALT_AA"), remove = F) %>%
+  parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
 ```
 
