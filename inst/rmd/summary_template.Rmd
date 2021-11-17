@@ -19,6 +19,8 @@ params:
   summary_output_file_path: "." 
   overwrite_Rds_files: TRUE
   api_top_count: 10
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE, warning = FALSE}
@@ -294,6 +296,8 @@ rbind(lofreq_effects, ivar_effects) %>%
     scale_x_continuous(labels=function(x) format(x, big.mark = ",", decimal.mark = ".", scientific = FALSE), trans = "log10") 
 ```
 
+### EFFECT Codes
+
 EFFECT | SO | Description
 --- | --- | ---
 missense_variant | [SO:0001583](http://www.sequenceontology.org/browser/current_svn/term/SO:0001583) | A sequence variant, that changes one or more bases, resulting in a different amino acid sequence but where the length is preserved.
@@ -303,9 +307,23 @@ disruptive_inframe_deletion | [SO:0001826](http://www.sequenceontology.org/miso/
 conservative_inframe_insertion | [SO:0001823](http://www.sequenceontology.org/browser/current_svn/term/SO:0001823) | An inframe increase in cds length that inserts one or more codons into the coding sequence between existing codons
 disruptive_inframe_insertion | [SO:0001824](http://www.sequenceontology.org/browser/current_svn/term/SO:0001824) | An inframe increase in cds length that inserts one or more codons into the coding sequence within an existing codon.
 
-### ALT_AAs and EFFECT
+### Parsing of EFFECTs and HGVS_P
 
-```{r}
+There are 9 different ways to parse the `HGVS_P` based on the `EFFECT` and whether there is an insertion, deletion or duplication. The table below has all 11 possibilities.
+
+GENE | POS | REF | ALT | EFFECT | HGVS_P | REF_AA | ALT_AA | AA_POS
+--- | --- | --- | --- | --- | --- | --- | --- | ---
+S | 21575 | C | G | missense_variant | p.Leu5Val | L | V | 5
+S | 23560 | TGGTGCAGGTATA | T | conservative_inframe_deletion | p.Gly667_Ile670del | G667_I670 | del | 667
+S | 21566 | TTTGTTTTTC | T | disruptive_inframe_deletion | p.Phe4_Val6del | F4_V6 | del | 4
+S | 21665 | GGTGTTT | G | disruptive_inframe_deletion | p.Gly35_Tyr37delinsAsp | G35_Y37 | insD | 35
+ORF1ab | 20188 | C | CCTGAAA | conservative_inframe_insertion | p.Glu191_Thr192dup | E191_T192 | dup | 193
+M | 26720 | G | GCTTTTTAGC | conservative_inframe_insertion | p.Leu67_Ala68insPheSerLeu | L67_A68 | insFSL | 68
+ORF1ab | 3705 | C | CATT | disruptive_inframe_insertion | p.Leu331dup | L331 | dup | 332
+ORF1ab | 9395 | T | TTAGTAAGTAAATTTA | disruptive_inframe_insertion | p.Ser3044delinsLeuValSerLysPheThr | S3044 | insLVSKFT | 3044
+ORF1ab | 386 | G | T | stop_gained | p.Glu41* | E | * | 41
+
+```{r, eval = F}
 table(df$ALT_AA, df$EFFECT, df$PIPELINE) %>% 
   as.data.frame() %>%
   rename("EFFECT" = "Var2", "ALT_AA" = "Var1", "PIPELINE" = "Var3") %>%
@@ -483,7 +501,8 @@ Note, only mutations with the 'missense_variant' `EFFECT` are searchable in the 
 
 ```{r}
 df %>%
-  filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  #filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  filter(EFFECT == 'missense_variant') %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
   select(SAMPLE, EFFECT, API_CODE, SNV, PIPELINE, GENE, POS, REF, ALT, AF, REF_AA, ALT_AA) %>%
@@ -495,7 +514,8 @@ df %>%
 ```{r, eval = overwrite_Rds_files, message=TRUE}
 top_lofreq = df %>%
   filter(PIPELINE == "lofreq", GENE == "S") %>%
-  filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  #filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  filter(EFFECT == 'missense_variant') %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
   select(API_CODE) %>%
@@ -511,7 +531,8 @@ write_delim(top_lofreq_results, file = file.path(summary_output_file_path, "_lof
 
 top_ivar = df %>%
   filter(PIPELINE == "ivar", GENE == "S") %>%
-  filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  #filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
+  filter(EFFECT == 'missense_variant') %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
   select(API_CODE) %>%
