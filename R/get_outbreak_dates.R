@@ -1,5 +1,7 @@
 #' Get peak dates and proportions from outbreak API data
 #'
+#' If multiple dates have the same proportion, only the fist date is shown.
+#'
 #' Percents are determined to 0.001% accuracy using the scales package.
 #'
 #' @param df A tibble or dataframe from one of the get outbreak functions
@@ -14,8 +16,9 @@ get_outbreak_peak = function(df) {
   df %>%
     group_by(LOCATION, SNV) %>%
     filter(proportion == max(proportion)) %>%
+    filter(date == min(date)) %>% # get first date if multiple are the same
     mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "PEAK", CODE = paste(LOCATION, SNV, sep = "_")) %>%
-    rename("DATE" = "date") %>%
+    dplyr::rename("DATE" = "date") %>%
     select(LOCATION, SNV, TYPE, DATE, PERCENT, CODE) %>%
     unique()
 }
@@ -39,7 +42,7 @@ get_outbreak_start= function(df) {
     filter(lineage_count > 0) %>%
     filter(date == min(date)) %>%
     mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "FIRST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
-    rename("DATE" = "date") %>%
+    dplyr::rename("DATE" = "date") %>%
     select(LOCATION, SNV, TYPE, DATE, PERCENT, CODE) %>%
     unique()
 }
@@ -62,7 +65,7 @@ get_outbreak_latest = function(df) {
     filter(lineage_count > 0) %>%
     filter(date == max(date)) %>%
     mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "LATEST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
-    rename("DATE" = "date") %>%
+    dplyr::rename("DATE" = "date") %>%
     select(LOCATION, SNV, TYPE, DATE, PERCENT, CODE) %>%
     unique()
 }

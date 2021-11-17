@@ -10,6 +10,9 @@ get_outbreak_peak(df)
 \item{df}{A tibble or dataframe from one of the get outbreak functions}
 }
 \description{
+If multiple dates have the same proportion, only the fist date is shown.
+}
+\details{
 Percents are determined to 0.001% accuracy using the scales package.
 }
 \examples{

@@ -76,7 +76,7 @@ _ivar_top_outbreak_results.txt | tab-delimited | The Outbreak API results from t
 _amplicon_summary.txt | tab-delimited | Attempt at re-creating a specific report for Excel analysis
 _amplicon_results.txt | tab-delimited | Attempt at re-creating a specific report for Excel analysis
 
-## Lofreq (iSNVs <1%)
+## Lofreq
 
 This is the "iVar -> LoFreq -> snpEFF/snpSIFT" workflow, and these results will have the "lofreq" `PIPELINE` string.
 
@@ -97,9 +97,7 @@ names(df) = gsub(x = names(df), pattern = "ANN\\[\\*\\]\\.", replacement = "")
 df = df %>%
   select("SAMPLE", "GENE", "POS", "REF", "ALT", "AF", "DP", "EFFECT", 
          "HGVS_C", "HGVS_P", "CDNA_POS", "AA_POS", "FILE") %>%
-  #rename("TOTAL_DP" = "DP", "ALT_FREQ" = "AF") %>% # no longer needed when using snpSIFT for ivar files
   unique()%>%
-  #mutate(PIPELINE = "lofreq", ALT_DP = TOTAL_DP * ALT_FREQ) # edited when using snpSIFT for ivar files
   mutate(PIPELINE = "lofreq", ALT_DP = as.integer(DP * AF))
 
 saveRDS(df, file = file.path(summary_output_file_path, "_summary_lofreq.Rds"))
@@ -113,22 +111,21 @@ Also, converting the `HGVS_P` column to `REF_AA` and `ALT_AA`, and removing any 
 ```{r}
 keeper_effects = c('stop_gained', 
                    'missense_variant',
-                   #'synonymous_variant',
                    'conservative_inframe_deletion',
                    'conservative_inframe_insertion',
                    'disruptive_inframe_deletion',
                    'disruptive_inframe_insertion') 
 
 df_lofreq = readRDS(file = file.path(summary_output_file_path, "_summary_lofreq.Rds"))  %>% 
-  filter(EFFECT %in% keeper_effects) %>%
-  filter(AF <= 0.01)
+  filter(EFFECT %in% keeper_effects) #%>%
+  #filter(AF <= 0.01)
 
 df_lofreq = df_lofreq %>%
   parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
 ```
 
-## iVar (iSNVs > 1%)
+## iVar
 
 This is the "iVar -> snpEFF/snpSIFT" workflow, and these results will have the "ivar" `PIPELINE` string.
 
@@ -172,8 +169,8 @@ Also, converting the `HGVS_P` column to `REF_AA` and `ALT_AA`, and removing any 
 # keeper_effects, replacement and patterns already defined above
 
 df_ivar = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds")) %>% 
-  filter(EFFECT %in% keeper_effects) %>%
-  filter(AF >= 0.01)
+  filter(EFFECT %in% keeper_effects) #%>%
+  #filter(AF >= 0.01)
 
 df_ivar = df_ivar %>%
   parse_ref_alt() %>%
@@ -196,22 +193,6 @@ saveRDS(df, file = file.path(summary_output_file_path, "_summary_DF.Rds"))
 
 df %>%
   write_delim(file.path(summary_output_file_path, "_summary_DF.txt"), delim = "\t")
-```
-
-```{r, fig.height=3, fig.width=12, eval = F}
-# not really needed anymore since both PIPELINEs are using snpSIFT, and therefore are using the same gene/GFF info
-df %>%
-  filter(GENE != "NA") %>%
-  select(PIPELINE, POS, GENE) %>%
-  group_by(PIPELINE, GENE) %>%
-  summarize(MIN = min(POS), MAX = max(POS)) %>%
-  ggplot() +
-    jak_theme() +
-    geom_segment(size = 10, aes(x=PIPELINE, xend=PIPELINE, y=MIN, yend=MAX, color = GENE)) +
-    geom_text(aes(label = GENE, x = PIPELINE, y = (MIN + MAX) / 2), angle = 90, size = 3) +
-    coord_flip() +
-    theme(legend.position = "none") +
-    scale_color_manual(values = palette_jak$bay(11))
 ```
 
 ```{r, fig.width=6, fig.height=4}
@@ -261,7 +242,7 @@ ggVennDiagram(x2) +
   labs(title = "Sample + SNVs")
 ```
 
-**SNVs:** There are `r length(snv_count)` total SNVs identified so far that are below 1% in 'lofreq' in at least one sample, or above 1% in 'ivar' in at least one sample, `r length(setdiff(lofreq, ivar))` found with just lofreq, `r length(setdiff(ivar, lofreq))` found with just ivar, and `r length(intersect(lofreq, ivar))` found with both.
+**SNVs:** There are `r length(snv_count)` total SNVs identified so far by 'lofreq' or 'ivar' in at least one sample, `r length(setdiff(lofreq, ivar))` found with just lofreq, `r length(setdiff(ivar, lofreq))` found with just ivar, and `r length(intersect(lofreq, ivar))` found with both.
 
 ```{r, eval = F}
 df %>%
@@ -277,11 +258,11 @@ df %>%
 snpSIFT classifies the SNV effect into several categories. Here are the categories and their total frequencies in all samples. Only the "blue" categories are used in this analysis. Most the of "ivar" effect categories are removed with the `ALT_QUAL > 20` filtering. 
 
 ```{r}
-lofreq_effects = readRDS(file = file.path(summary_output_file_path, "_summary_lofreq.Rds")) %>% 
-  filter(AF <= 0.01)
+lofreq_effects = readRDS(file = file.path(summary_output_file_path, "_summary_lofreq.Rds")) #%>% 
+  #filter(AF <= 0.01)
 
-ivar_effects = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds")) %>% 
-  filter(AF >= 0.01)
+ivar_effects = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds")) #%>% 
+  #filter(AF >= 0.01)
 
 rbind(lofreq_effects, ivar_effects) %>%
   group_by(EFFECT, PIPELINE) %>%
@@ -311,24 +292,28 @@ disruptive_inframe_insertion | [SO:0001824](http://www.sequenceontology.org/brow
 
 There are 9 different ways to parse the `HGVS_P` based on the `EFFECT` and whether there is an insertion, deletion or duplication. The table below has all 11 possibilities.
 
-GENE | POS | REF | ALT | EFFECT | HGVS_P | REF_AA | ALT_AA | AA_POS
---- | --- | --- | --- | --- | --- | --- | --- | ---
-S | 21575 | C | G | missense_variant | p.Leu5Val | L | V | 5
-S | 23560 | TGGTGCAGGTATA | T | conservative_inframe_deletion | p.Gly667_Ile670del | G667_I670 | del | 667
-S | 21566 | TTTGTTTTTC | T | disruptive_inframe_deletion | p.Phe4_Val6del | F4_V6 | del | 4
-S | 21665 | GGTGTTT | G | disruptive_inframe_deletion | p.Gly35_Tyr37delinsAsp | G35_Y37 | insD | 35
-ORF1ab | 20188 | C | CCTGAAA | conservative_inframe_insertion | p.Glu191_Thr192dup | E191_T192 | dup | 193
-M | 26720 | G | GCTTTTTAGC | conservative_inframe_insertion | p.Leu67_Ala68insPheSerLeu | L67_A68 | insFSL | 68
-ORF1ab | 3705 | C | CATT | disruptive_inframe_insertion | p.Leu331dup | L331 | dup | 332
-ORF1ab | 9395 | T | TTAGTAAGTAAATTTA | disruptive_inframe_insertion | p.Ser3044delinsLeuValSerLysPheThr | S3044 | insLVSKFT | 3044
-ORF1ab | 386 | G | T | stop_gained | p.Glu41* | E | * | 41
+TYPE | GENE | POS | REF | ALT | AF | DP | EFFECT | HGVS_C | HGVS_P | REF_AA | ALT_AA | CDNA_POS | AA_POS
+--- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
+1 | S | 21575 | C | G | 0.012994 | 106739 | missense_variant | c.13C>G | p.Leu5Val | L | V | 13 | 5
+2 | S | 23560 | TGGTGCAGGTATA | T | 0.01875 | 160 | conservative_inframe_deletion | c.1999_2010delGGTGCAGGTATA | p.Gly667_Ile670del | G667_I670 | del | 1999 | 667
+3 | S | 21566 | TTTGTTTTTC | T | 5.15E-04 | 101017 | disruptive_inframe_deletion | c.12_20delTCTTGTTTT | p.Phe4_Val6del | F4_V6 | del | 12 | 4
+4 | S | 21650 | AATTCTT | A | 0.00122 | 4919 | disruptive_inframe_deletion | c.89_94delATTCTT | p.Asn30_Phe32delinsIle | N30_F32 | insI | 89 | 30
+5 | ORF1ab | 20188 | C | CCTGAAA | 2.87E-04 | 45358 | conservative_inframe_insertion | c.571_576dupGAAACT | p.Glu191_Thr192dup | E191_T192 | dup | 577 | 193
+6 | M | 26720 | G | GCTTTTTAGC | 9.07E-04 | 36366 | conservative_inframe_insertion | c.201_202insTTTAGCCTT | p.Leu67_Ala68insPheSerLeu | L67_A68 | insFSL | 202 | 68
+7 | ORF1ab | 3705 | C | CATT | 1.31E-04 | 258674 | disruptive_inframe_insertion | c.992_994dupTAT | p.Leu331dup | L331 | dup | 995 | 332
+8 | ORF1ab | 9395 | T | TTAGTAAGTAAATTTA | 1.99E-04 | 75341 | disruptive_inframe_insertion | c.9130_9131insTAGTAAGTAAATTTA | p.Ser3044delinsLeuValSerLysPheThr | S3044 | insLVSKFT | 9131 | 3044
+9 | ORF1ab | 386 | G | T | 0.002922 | 60925 | stop_gained | c.121G>T | p.Glu41* | E | * | 121 | 41
+
+```{r, fig.height=3, fig.width=7}
+MappgeneSummary::view_HGVS_C("c.13C>G")
+```
 
 ```{r, eval = F}
 table(df$ALT_AA, df$EFFECT, df$PIPELINE) %>% 
   as.data.frame() %>%
-  rename("EFFECT" = "Var2", "ALT_AA" = "Var1", "PIPELINE" = "Var3") %>%
+  dplyr::rename("EFFECT" = "Var2", "ALT_AA" = "Var1", "PIPELINE" = "Var3") %>%
   filter(Freq > 0) %>%
-  format_dt()
+  format_dt(file = "SNV_count")
 ```
 
 ## SNV Sample Count per Pipeline
@@ -372,7 +357,6 @@ df %>%
   column_to_rownames('SNV') %>%
   as.matrix() %>%
   pheatmap::pheatmap(show_rownames = T,
-          #scale = "row",
           border_color = NA,
           color = viridis::viridis(100))
 ```
@@ -469,9 +453,6 @@ as = df %>%
 
 as %>%
   write_delim(file.path(summary_output_file_path, "_amplicon_summary.txt"), delim = "\t")
-
-# as %>%
-#   format_dt()
 ```
 
 ## Amplicon Result
@@ -480,15 +461,11 @@ This table is too big to display here. It is saved as a tab-delimited file here:
 
 ```{r}
 ar = df %>%
-  #filter(EFFECT %in% keeper_effects | PIPELINE == 'ivar') %>%
   filter(EFFECT %in% keeper_effects) %>%
   select(POS, SAMPLE, PIPELINE, REF, ALT, DP, AF, GENE, REF_AA, ALT_AA, AA_POS, SNV)
 
 ar %>%
   write_delim(file.path(summary_output_file_path, "_amplicon_result.txt"), delim = "\t")
-# 
-# ar %>%
-#   format_dt()
 ```
 
 # outbreak.info API
@@ -501,7 +478,6 @@ Note, only mutations with the 'missense_variant' `EFFECT` are searchable in the 
 
 ```{r}
 df %>%
-  #filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
   filter(EFFECT == 'missense_variant') %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
@@ -514,7 +490,6 @@ df %>%
 ```{r, eval = overwrite_Rds_files, message=TRUE}
 top_lofreq = df %>%
   filter(PIPELINE == "lofreq", GENE == "S") %>%
-  #filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
   filter(EFFECT == 'missense_variant') %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
@@ -531,7 +506,6 @@ write_delim(top_lofreq_results, file = file.path(summary_output_file_path, "_lof
 
 top_ivar = df %>%
   filter(PIPELINE == "ivar", GENE == "S") %>%
-  #filter(REF_AA %in% replacement, ALT_AA %in% replacement) %>%
   filter(EFFECT == 'missense_variant') %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
@@ -584,7 +558,7 @@ bind_rows(f, l, m) %>%
   pivot_wider(values_from = DATE, names_from = TYPE) %>%
   left_join(m_light, by = "CODE") %>%
   select(-CODE) %>%
-  rename("PEAK_PERCENT" = "PERCENT") %>%
+  dplyr::rename("PEAK_PERCENT" = "PERCENT") %>%
   format_dt()
 
 bind_rows(m, f, l) %>%
@@ -613,6 +587,45 @@ bind_rows(m, f, l) %>%
     facet_wrap(~SNV, ncol = 3) +
     labs(title = "First, peak and last occurrence", x = "Month-Year") + 
     scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
+```
+
+# COI & COV
+
+```{r}
+library(purrr)
+
+COI_COV = readxl::read_excel(system.file("extdata", "muatation list for VOC and VOI 11.16.21.xlsx", package = "MappgeneSummary"), col_names = FALSE)
+colnames(COI_COV) = c("GENE", "COI_COV", "AA_RANGE")
+
+COI_COV = COI_COV %>%
+  unique() %>%
+  select("GENE", "COI_COV", "AA_RANGE") %>%
+  separate(AA_RANGE, sep = "/", into = c("A", "B"), remove = F) %>%
+  mutate(B = ifelse(is.na(B), A, B)) %>%
+  transmute(GENE, COI_COV, AA_RANGE, AA_POS = map2(A, B, seq, by = 1)) %>%
+  unnest(cols = AA_POS) %>%
+  mutate(CODE = paste(GENE, AA_POS, sep = "_")) %>%
+  select(-GENE, -AA_POS)
+
+df_COI_COV = readRDS(file = file.path(summary_output_file_path, "_summary_DF.Rds")) %>%
+  mutate(GENE = case_when(
+    GENE == "ORF1ab" & AA_POS >= 4401 ~ "ORF1b",
+    GENE == "ORF1ab" & AA_POS < 4401 ~ "ORF1a",
+    TRUE ~ GENE
+  )) %>%
+  mutate(AA_POS = ifelse(GENE == "ORF1b", AA_POS - 4401, AA_POS)) %>% 
+  mutate(CODE = paste(GENE, AA_POS, sep = "_"))
+
+df_COI_COV %>%
+  left_join(COI_COV, by = "CODE") %>%
+  select(-FILE, -SNV, -REF, -ALT, -CDNA_POS) %>%
+  filter(COI_COV != "NA") %>% 
+  arrange(GENE, AA_RANGE) %>%
+  group_by(GENE, COI_COV, AA_RANGE, AA_POS, HGVS_C, HGVS_P, REF_AA,  ALT_AA) %>%
+  summarize(SAMPLE_LIST = list(SAMPLE)) %>%
+  mutate(SAMPLE_COUNT = lengths(SAMPLE_LIST), SAMPLES = mapply(paste0, SAMPLE_LIST, collapse = ",")) %>%
+  select(-SAMPLE_LIST) %>%
+  format_dt(row_count = 20, file = "COI_COV_list")
 ```
 
 # Session Info
