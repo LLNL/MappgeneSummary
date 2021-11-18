@@ -621,7 +621,7 @@ df_COI_COV %>%
   select(-FILE, -SNV, -REF, -ALT, -CDNA_POS) %>%
   filter(COI_COV != "NA") %>% 
   arrange(GENE, AA_RANGE) %>%
-  group_by(GENE, COI_COV, AA_RANGE, AA_POS, HGVS_C, HGVS_P, REF_AA,  ALT_AA) %>%
+  group_by(GENE, COI_COV, AA_RANGE, AA_POS, REF_AA,  ALT_AA, HGVS_C, HGVS_P, PIPELINE) %>%
   summarize(SAMPLE_LIST = list(SAMPLE)) %>%
   mutate(SAMPLE_COUNT = lengths(SAMPLE_LIST), SAMPLES = mapply(paste0, SAMPLE_LIST, collapse = ",")) %>%
   select(-SAMPLE_LIST) %>%
