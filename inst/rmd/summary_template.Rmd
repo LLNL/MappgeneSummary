@@ -81,7 +81,7 @@ _amplicon_results.txt | tab-delimited | Attempt at re-creating a specific report
 This is the "iVar -> LoFreq -> snpEFF/snpSIFT" workflow, and these results will have the "lofreq" `PIPELINE` string.
 
 ```{r, eval = overwrite_Rds_files}
-files = list.files(path = mappgene_file_path, pattern = "*.ivar.snpSIFT.txt$", recursive = TRUE, full.names = T)
+files = list.files(path = mappgene_file_path, pattern = "*.ivar.lofreq.snpSIFT.txt$", recursive = TRUE, full.names = T)
 
 df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
   bind_rows(.id = "id")
@@ -89,7 +89,7 @@ df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %
 df = df %>%
   mutate(FILE = basename(id)) %>% 
   select(-id) %>%
-  mutate(SAMPLE = str_replace(FILE, ".ivar.snpSIFT.txt", "")) %>%
+  mutate(SAMPLE = str_replace(FILE, ".ivar.lofreq.snpSIFT.txt", "")) %>%
   mutate(SAMPLE = str_replace(SAMPLE, "LLNL_", ""))
 
 names(df) = gsub(x = names(df), pattern = "ANN\\[\\*\\]\\.", replacement = "")
@@ -136,7 +136,7 @@ iVar output was processed according to Jimmy's pipeline
 3. removing synonymous mutations (REF_AA=ALT_AA)
 
 ```{r, eval = overwrite_Rds_files}
-files = list.files(path = mappgene_file_path, pattern = "*ivar.final.masked.variants.snpSIFT.txt$", recursive = TRUE, full.names = T)
+files = list.files(path = mappgene_file_path, pattern = "*.ivar.snpSIFT.txt$", recursive = TRUE, full.names = T)
 
 df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
   bind_rows(.id = "id")
@@ -144,7 +144,7 @@ df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %
 df = df %>%
   mutate(FILE = basename(id)) %>% 
   select(-id) %>%
-  mutate(SAMPLE = str_replace(FILE, ".ivar.final.masked.variants.snpSIFT.txt", "")) %>%
+  mutate(SAMPLE = str_replace(FILE, ".ivar.snpSIFT.txt", "")) %>%
   mutate(SAMPLE = str_replace(SAMPLE, "LLNL_", "")) %>%
   filter(ALT_QUAL > 20) %>%
   filter(FILTER == 'PASS')
@@ -401,7 +401,7 @@ The stress of the above plot is `r df.v1$stress * 100` (values > 10-15% are gene
 If a SNV was found in a sample by both ivar and lofreq, the frequency is averaged. 
 
 ```{r}
-df.v2 =  df %>%
+df.v2 = df %>%
   select(SAMPLE, SNV, AF) %>% 
   group_by(SAMPLE, SNV) %>%
   summarize(AF_MEAN = mean(AF)) %>%
@@ -470,11 +470,14 @@ ar %>%
 
 # outbreak.info API
 
+The outbreak.info API is currently undergoing changes and is not available.
+
 ```{r}
 location_palette = c("CA" = "#00496F", "USA" = "#EDD746", "GLOBAL" = "#DD4124")
-```
 
-Note, only mutations with the 'missense_variant' `EFFECT` are searchable in the API. All others are not included below.
+# move this back to the text when the API is working again
+#Note, only mutations with the 'missense_variant' `EFFECT` are searchable in the API. All others are not included below.
+```
 
 ```{r}
 df %>%
@@ -485,9 +488,8 @@ df %>%
   format_dt()
 ```
 
-## S Gene
-
-```{r, eval = overwrite_Rds_files, message=TRUE}
+```{r, eval = F, message=TRUE}
+#```{r, eval = overwrite_Rds_files, message=TRUE}
 top_lofreq = df %>%
   filter(PIPELINE == "lofreq", GENE == "S") %>%
   filter(EFFECT == 'missense_variant') %>%
@@ -521,15 +523,20 @@ top_ivar_results = bind_rows(get_state_outbreak_info(states = "CA", SNVs = top_i
 write_delim(top_ivar_results, file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.txt"), delim = "\t")
 ```
 
-```{r, fig.width=12, fig.height=10}
+```{r, fig.width=12, fig.height=10, eval = F}
 top_lofreq_results = read_delim(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.txt"), delim = "\t")
 
 top_ivar_results = read_delim(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.txt"), delim = "\t")
 
-a = plot_outbreak_trends(top_lofreq_results, title = "Lofreq Proportions (free y-axis scale)") +
+a = tryCatch(
+  expr = {plot_outbreak_trends(top_lofreq_results, title = "Lofreq Proportions (free y-axis scale)") +
       jak_theme() +
       scale_fill_manual(values = location_palette) +
-      scale_color_manual(values = location_palette)
+      scale_color_manual(values = location_palette)},
+  error = function(e){ 
+        print("uh oh")
+    }
+)
 
 b = plot_outbreak_trends(top_ivar_results, title = "iVar Proportions (free y-axis scale)") +
       jak_theme() +
@@ -539,7 +546,7 @@ b = plot_outbreak_trends(top_ivar_results, title = "iVar Proportions (free y-axi
 a + b
 ```
 
-```{r, fig.width=12, fig.height=10}
+```{r, fig.width=12, fig.height=10, eval = F}
 m = bind_rows(top_lofreq_results, top_ivar_results) %>%
       get_outbreak_peak()
 
@@ -573,7 +580,7 @@ bind_rows(m, f, l) %>%
     scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
 ```
 
-```{r, fig.width=12, fig.height=10}
+```{r, fig.width=12, fig.height=10, eval = F}
 bind_rows(m, f, l) %>%
   mutate(LOCATION = as.factor(LOCATION), LOCATION = fct_relevel(LOCATION, c("GLOBAL", "USA", "CA"))) %>%
   mutate(SNV = as.factor(SNV), SNV = fct_relevel(SNV, rev(levels(SNV)))) %>%
