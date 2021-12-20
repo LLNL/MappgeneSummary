@@ -85,7 +85,12 @@ This is the "iVar -> LoFreq -> snpEFF/snpSIFT" workflow, and these results will 
 ```{r, eval = overwrite_Rds_files}
 files = list.files(path = mappgene_file_path, pattern = "*.ivar.lofreq.snpSIFT.txt$", recursive = TRUE, full.names = T)
 
-df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
+df = sapply(files, 
+            read_delim, 
+            delim = "\t", 
+            comment = "##", 
+            simplify = FALSE,
+            col_types = "ficcdifffcciic") %>% 
   bind_rows(.id = "id")
 
 df = df %>%
@@ -156,7 +161,12 @@ iVar output was processed according to Jimmy's pipeline
 ```{r, eval = overwrite_Rds_files}
 files = list.files(path = mappgene_file_path, pattern = "*.ivar.snpSIFT.txt$", recursive = TRUE, full.names = T)
 
-df = sapply(files, read_delim, delim = "\t", comment = "##", simplify = FALSE) %>% 
+df = sapply(files, 
+            read_delim, 
+            delim = "\t", 
+            comment = "##", 
+            simplify = FALSE,
+            col_types = "ficcdifffcciic") %>% 
   bind_rows(.id = "id")
 
 df = df %>%
