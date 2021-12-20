@@ -57,6 +57,8 @@ if (params$mappgene_file_path == 'test') {
 summary_output_file_path = params$summary_output_file_path
 overwrite_Rds_files = params$overwrite_Rds_files
 api_top_count = params$api_top_count
+
+samples_to_exclude = c("CADPH171B", "CADPH220B") # these will be printed below where they are actually removed
 ```
 
 # Background
@@ -125,6 +127,22 @@ df_lofreq = df_lofreq %>%
   filter(REF_AA != ALT_AA)
 ```
 
+```{r}
+lofreq_with_B = length(unique(df_lofreq$SAMPLE))
+
+df_lofreq = df_lofreq %>%
+  filter(!SAMPLE %in% samples_to_exclude)
+
+lofreq_without_B = length(unique(df_lofreq$SAMPLE))
+```
+
+Finally, the samples below were removed bringing the total LoFreq samples from `r lofreq_with_B` to `r lofreq_without_B`.
+
+```{r}
+tibble("Excluded Samples" = samples_to_exclude) %>%
+  knitr::kable()
+```
+
 ## iVar
 
 This is the "iVar -> snpEFF/snpSIFT" workflow, and these results will have the "ivar" `PIPELINE` string.
@@ -175,6 +193,22 @@ df_ivar = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds"
 df_ivar = df_ivar %>%
   parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
+```
+
+```{r}
+ivar_with_B = length(unique(df_ivar$SAMPLE))
+
+df_ivar = df_ivar %>%
+  filter(!SAMPLE %in% samples_to_exclude)
+
+ivar_without_B = length(unique(df_ivar$SAMPLE))
+```
+
+Finally, the samples below were removed bringing the total iVar samples from `r ivar_with_B` to `r ivar_without_B`.
+
+```{r}
+tibble("Excluded Samples" = samples_to_exclude) %>%
+  knitr::kable()
 ```
 
 ## Pipeline Summary and Merging
