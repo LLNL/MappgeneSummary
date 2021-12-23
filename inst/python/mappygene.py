@@ -27,7 +27,7 @@ import pandas as pd
 DEBUG: bool = False  # True here will print more stuff useful for debugging
 refgen: Path = Path('NC_045512.2.fasta')  # Expected location for R/reticulate
 if not refgen.is_file():  # We are debugging into "/inst/python"
-    refgen = Path('../../NC_045512.2.fasta')
+    refgen = Path('inst/extdata/NC_045512.2.fasta')
 
 # Read the sequence into a SeqIO object
 refseq = SeqIO.read(refgen, format='fasta')
