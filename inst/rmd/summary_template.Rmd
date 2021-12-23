@@ -33,6 +33,12 @@ library(DT)
 library(patchwork)
 library(ggVennDiagram)
 library(jsonlite)
+library(Biostrings)
+library(msa)
+library(ggmsa)
+library(reticulate)
+conda_install("r-reticulate", "biopython")
+conda_install("r-reticulate", "pandas")
 
 options(max.print="100", scipen = 999)
 opts_chunk$set(echo=params$echo_type,
@@ -59,6 +65,9 @@ overwrite_Rds_files = params$overwrite_Rds_files
 api_top_count = params$api_top_count
 
 samples_to_exclude = c("CADPH171B", "CADPH220B") # these will be printed below where they are actually removed
+
+# Parse python code
+reticulate::source_python(system.file("python/mappygene.py", package = "MappgeneSummary"))
 ```
 
 # Background
@@ -130,6 +139,9 @@ df_lofreq = readRDS(file = file.path(summary_output_file_path, "_summary_lofreq.
 df_lofreq = df_lofreq %>%
   parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
+
+# Use mappygene to populate an NSP column
+df_lofreq <- mappgene_summary_populate_df_col(df_lofreq, nsp_only=TRUE, out_type='str')
 ```
 
 ```{r}
@@ -203,6 +215,9 @@ df_ivar = readRDS(file = file.path(summary_output_file_path, "_summary_ivar.Rds"
 df_ivar = df_ivar %>%
   parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
+
+# Use mappygene to populate an NSP column
+df_ivar <- mappgene_summary_populate_df_col(df_ivar, nsp_only=TRUE, out_type='str')
 ```
 
 ```{r}
