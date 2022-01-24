@@ -3,11 +3,11 @@ mappygene: aux python module for mappgene summary
 
 """
 __all__ = ['__author__', '__date__', '__version__']
-__author__ = 'Jose Manuel Martí'
+__author__ = 'Tyshawn Ferrell and Jose Manuel Martí'
 __email__ = 'martimartine1 **AT** llnl.gov'
 __status__ = 'Alpha'
-__date__ = 'Dec 2021'
-__version__ = '0.0.5'
+__date__ = 'Jan 2022'
+__version__ = '0.0.7'
 
 # Python Standard Library
 import io
@@ -24,10 +24,13 @@ import numpy as np
 import pandas as pd
 
 # Here we define some constants and alike
-DEBUG: bool = False  # True here will print more stuff useful for debugging
+debug: bool = False  # True here will print more stuff useful for debugging
 refgen: Path = Path('NC_045512.2.fasta')  # Expected location for R/reticulate
-if not refgen.is_file():  # We are debugging into "/inst/python"
+if not refgen.is_file(): # Let's look for the file
     refgen = Path('inst/extdata/NC_045512.2.fasta')
+    if not refgen.is_file():  # We are debugging into "/inst/python"
+        debug = True
+        refgen = Path('../extdata/NC_045512.2.fasta')
 
 # Read the sequence into a SeqIO object
 refseq = SeqIO.read(refgen, format='fasta')
@@ -254,7 +257,7 @@ S = Gene(refseq, 'S', 21563, 25384)
 ORF2b = Gene(refseq, 'ORF2b', 21744, 21860)  # Also named: S.iORF1
 
 ORF3 = Gene(refseq, 'ORF3', 25393, 26220)
-ORF3a = ORF3  # Assuming this
+ORF3a = Gene(refseq, 'ORF3a', 25393, 26220)  # Assuming same pos than ORF3!
 ORF3c = Gene(refseq, 'ORF3c', 25457, 25579)  # Also named: ORF3h, 3a.iORF1, ORF3b
 ORF3d = Gene(refseq, 'ORF3d', 25524, 25694)  # Also named: ORF3b
 ORF3d_2 = Gene(refseq, 'ORF3d_2', 25596, 25694)  # Also named: 3a.iORF2
@@ -310,13 +313,17 @@ genes.extend(nsps)  # Extend general gene list with nsp list
 
 
 def pos2genes(pos:int, gene_name:str=None,
-              tgt_genes:List[Gene]=None, out_type:str='dict'
+              tgt_genes:List[Gene]=None,
+              exclude_gene_name:bool=False,
+              out_type:str='dict'
               ) -> Union[Dict[str,int], List[str], str] :
-    """Get dict of genes/rel_pos corresponding to pos in the genome or genes
-    
-    gene: If gene is missing the position will be absolute for the genome, 
-    otherwise it will be assumed to be a relative position to the gene.
+    """Get dict of genes/rel_pos corresponding to NT pos in the genome or genes
 
+    pos: position for the search, relative of absolute depending on next param
+    gene_name: If not set the position will be absolute for the genome,
+      otherwise it will be assumed to be a relative position to that gene.
+    tgt_genes: List of genes used for the search, all the defined by default
+    exclude_gene_name: if True and gene_name set, exclude it from the output
     out_type: 'dict' for dict of gene:position, 'list' for list of "gene.pos",
       or 'str' for just a string with "gene.pos gene.pos" and so forth.
     """
@@ -340,10 +347,14 @@ def pos2genes(pos:int, gene_name:str=None,
         try:
             rel_pos = gene.pos_genome2gene(
                 abs_pos, src = Target.NT, tgt = Target.NT)[0]
-        except ValueError:
+        except ValueError:  # No hit!
             pass
-        else:
+        else:  # Hit!
             touched[gene.name] = rel_pos
+    # Exclude gene_name from the output if it's there
+    if exclude_gene_name:
+        touched.pop(gene_name, None)
+    # Convert the output to the desired format
     if out_type == 'list':
         retouched:List[str] = [
             f'{gen}.{int(pos)}' for (gen, pos) in touched.items()]
@@ -356,25 +367,35 @@ def pos2genes(pos:int, gene_name:str=None,
         return touched
 
 
-def mappgene_summary_populate_df_col(df:pd.DataFrame,
-                                     nsp_only:bool = True,
-                                     out_type:str = 'dict'):
-    """Populate column of (R) dataframe with NSPs or all genes
+def mappgene_summary_populate_df_cols(df:pd.DataFrame,
+                                      nsp:bool = True,
+                                      out_type:str = 'dict'
+                                      ) -> pd.DataFrame:
+    """Populate column(s) of (R) dataframe
+
+     * additional col with NSPs or all genes
+     * additional col with ORF1ab to/from ORF1a/b
 
     NOTE: Function interfacing with mappgene_summary via R::reticulate
     """
-    _genes: List[Gene]
-    _col:str = ''
-    if nsp_only:
-        _genes = nsps
-        _col = 'NSP'
+
+    def df_apply_pos2genes(tgt_genes: List[Gene], col:str,
+                           exclude_gene_name:bool = False) -> None:
+        """Aux: use df.apply with pos2genes for each row of the df"""
+        df[col] = df.apply(
+            lambda row: pos2genes(row.POS, gene_name=row.GENE,
+                                  tgt_genes=tgt_genes, out_type=out_type,
+                                  exclude_gene_name=exclude_gene_name),
+            axis=1)
+
+    # NSPs or all genes
+    if nsp:
+        df_apply_pos2genes(nsps, 'NSP')
     else:
-        _genes = genes
-        _col = 'ALL_GENES'
-    df[_col] = df.apply(
-        lambda row: pos2genes(row.POS, gene_name=row.GENE,
-                              tgt_genes=_genes, out_type=out_type),
-        axis=1)
+        df_apply_pos2genes(genes, 'ALL_GENES')
+    # ORF
+    df_apply_pos2genes(orfs, 'ORF', exclude_gene_name=False)
+    #df_apply_pos2genes(orfs, 'OTHER_ORF', exclude_gene_name=True)
     return df
 
 
@@ -445,6 +466,6 @@ def do_checks():
 
 if __name__ == '__main__':
     # Check that we got it right
-    if DEBUG:
+    if debug:
         do_checks()
 

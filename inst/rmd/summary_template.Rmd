@@ -140,8 +140,8 @@ df_lofreq = df_lofreq %>%
   parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
 
-# Use mappygene to populate an NSP column
-df_lofreq <- mappgene_summary_populate_df_col(df_lofreq, nsp_only=TRUE, out_type='str')
+# Use mappygene to populate hit NSPs (or hit ALL_GENES if FALSE) and hit ORFs columns
+df_lofreq <- mappgene_summary_populate_df_cols(df_lofreq, nsp=TRUE, out_type='str')
 ```
 
 ```{r}
@@ -216,8 +216,8 @@ df_ivar = df_ivar %>%
   parse_ref_alt() %>%
   filter(REF_AA != ALT_AA)
 
-# Use mappygene to populate an NSP column
-df_ivar <- mappgene_summary_populate_df_col(df_ivar, nsp_only=TRUE, out_type='str')
+# Use mappygene to populate hit NSPs (or hit ALL_GENES if FALSE) and hit ORFs columns
+df_ivar <- mappgene_summary_populate_df_cols(df_ivar, nsp=TRUE, out_type='str')
 ```
 
 ```{r}
@@ -506,8 +506,8 @@ This table is too big to display here. It is saved as a tab-delimited file here:
 as = df %>%
   #filter(EFFECT %in% keeper_effects | PIPELINE == 'ivar') %>%
   filter(EFFECT %in% keeper_effects) %>%
-  select(SAMPLE, PIPELINE, POS, SAMPLE, REF, ALT, AF, GENE, NSP, REF_AA, ALT_AA, AA_POS, SNV) %>%
-  group_by(PIPELINE, POS, REF, ALT, GENE, NSP, REF_AA, ALT_AA, AA_POS, SNV) %>%
+  select(SAMPLE, PIPELINE, POS, SAMPLE, REF, ALT, AF, GENE, NSP, ORF, REF_AA, ALT_AA, AA_POS, SNV) %>%
+  group_by(PIPELINE, POS, REF, ALT, GENE, NSP, ORF, REF_AA, ALT_AA, AA_POS, SNV) %>%
   summarize(SAMPLE_COUNT = n(), AF_MEAN = mean(AF), AF_SD = sd(AF))
 
 as %>%
@@ -521,7 +521,7 @@ This table is too big to display here. It is saved as a tab-delimited file here:
 ```{r}
 ar = df %>%
   filter(EFFECT %in% keeper_effects) %>%
-  select(POS, SAMPLE, PIPELINE, REF, ALT, DP, AF, GENE, NSP, REF_AA, ALT_AA, AA_POS, SNV)
+  select(POS, SAMPLE, PIPELINE, REF, ALT, DP, AF, GENE, NSP, ORF, REF_AA, ALT_AA, AA_POS, SNV)
 
 ar %>%
   write_delim(file.path(summary_output_file_path, "_amplicon_result.txt"), delim = "\t")
@@ -543,7 +543,7 @@ df %>%
   filter(EFFECT == 'missense_variant') %>%
   mutate(API_CODE = paste0(GENE, ':', REF_AA, AA_POS, ALT_AA)) %>% 
   arrange(desc(AF)) %>%
-  select(SAMPLE, EFFECT, API_CODE, SNV, PIPELINE, GENE, NSP, POS, REF, ALT, AF, REF_AA, ALT_AA) %>%
+  select(SAMPLE, EFFECT, API_CODE, SNV, PIPELINE, GENE, NSP, ORF, POS, REF, ALT, AF, REF_AA, ALT_AA) %>%
   format_dt()
 ```
 
@@ -700,7 +700,7 @@ df_VOI_VOC %>%
   select(-FILE, -SNV, -REF, -ALT, -CDNA_POS) %>%
   filter(VOI_VOC != "NA") %>% 
   arrange(GENE, AA_RANGE) %>%
-  group_by(GENE, NSP, VOI_VOC, TYPE, AA_RANGE, AA_POS, REF_AA,  ALT_AA, HGVS_C, HGVS_P, PIPELINE) %>%
+  group_by(GENE, NSP, ORF, VOI_VOC, TYPE, AA_RANGE, AA_POS, REF_AA,  ALT_AA, HGVS_C, HGVS_P, PIPELINE) %>%
   summarize(SAMPLE_LIST = list(SAMPLE)) %>%
   mutate(SAMPLE_COUNT = lengths(SAMPLE_LIST), SAMPLES = mapply(paste0, SAMPLE_LIST, collapse = ",")) %>%
   select(-SAMPLE_LIST) %>%
