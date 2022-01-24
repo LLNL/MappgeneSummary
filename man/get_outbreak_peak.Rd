@@ -17,5 +17,5 @@ Percents are determined to 0.001% accuracy using the scales package.
 }
 \examples{
 get_outbreak_peak(top20_results)
-get_state_outbreak_info(states = c("CA", "OR"), SNVs = "S:Y1155H") \%>\% get_outbreak_peak()
+get_outbreak_info(SNVs = "S:Y1155H") \%>\% get_outbreak_peak()
 }

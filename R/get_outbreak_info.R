@@ -1,3 +1,27 @@
+#' Data from outbreak API
+#'
+#' @param SNVs A SNV or vector of SNVs formatted for the outbreak API (eg S:Y1155H)
+#'
+#' @export
+#'
+#' @examples
+#' get_outbreak_info(SNVs = "S:Y1155H")
+#'
+
+get_outbreak_info = function(SNVs) {
+  df = data.frame()
+
+  for (SNV in top_lofreq) {
+    California = getPrevalence(mutations = SNV, location = "California", logInfo = FALSE)
+    USA = getPrevalence(mutations = SNV, location = "United States", logInfo = FALSE)
+    Global = getPrevalence(mutations = SNV, logInfo = FALSE)
+
+    df = rbind(df, California, USA, Global)
+  }
+
+  return(df)
+}
+
 #' State data from outbreak API
 #'
 #' @param states A state or vector of states

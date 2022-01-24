@@ -10,16 +10,17 @@
 #'
 #' @examples
 #' get_outbreak_peak(top20_results)
-#' get_state_outbreak_info(states = c("CA", "OR"), SNVs = "S:Y1155H") %>% get_outbreak_peak()
+#' get_outbreak_info(SNVs = "S:Y1155H") %>% get_outbreak_peak()
 
 get_outbreak_peak = function(df) {
+  
   df %>%
-    group_by(LOCATION, SNV) %>%
+    group_by(location, lineage) %>%
     filter(proportion == max(proportion)) %>%
     filter(date == min(date)) %>% # get first date if multiple are the same
-    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "PEAK", CODE = paste(LOCATION, SNV, sep = "_")) %>%
+    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "PEAK", CODE = paste(location, lineage, sep = "_")) %>%
     dplyr::rename("DATE" = "date") %>%
-    select(LOCATION, SNV, TYPE, DATE, PERCENT, CODE) %>%
+    select(location, lineage, TYPE, DATE, PERCENT, CODE) %>%
     unique()
 }
 
@@ -33,17 +34,17 @@ get_outbreak_peak = function(df) {
 #'
 #' @examples
 #' get_outbreak_start(top20_results)
-#' get_state_outbreak_info(states = c("CA", "OR"), SNVs = "S:Y1155H") %>% get_outbreak_start()
+#' get_outbreak_info(SNVs = "S:Y1155H") %>% get_outbreak_start()
 
 get_outbreak_start= function(df) {
 
   df %>%
-    group_by(LOCATION, SNV) %>%
+    group_by(location, lineage) %>%
     filter(lineage_count > 0) %>%
     filter(date == min(date)) %>%
-    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "FIRST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
+    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "FIRST", CODE = paste(location, lineage, sep = "_")) %>%
     dplyr::rename("DATE" = "date") %>%
-    select(LOCATION, SNV, TYPE, DATE, PERCENT, CODE) %>%
+    select(location, lineage, TYPE, DATE, PERCENT, CODE) %>%
     unique()
 }
 
@@ -57,15 +58,16 @@ get_outbreak_start= function(df) {
 #'
 #' @examples
 #' get_outbreak_latest(top20_results)
-#' get_state_outbreak_info(states = c("CA", "OR"), SNVs = "S:Y1155H") %>% get_outbreak_latest()
+#' get_outbreak_info(SNVs = "S:Y1155H") %>% get_outbreak_latest()
 
 get_outbreak_latest = function(df) {
+
   df %>%
-    group_by(LOCATION, SNV) %>%
+    group_by(location, lineage) %>%
     filter(lineage_count > 0) %>%
     filter(date == max(date)) %>%
-    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "LATEST", CODE = paste(LOCATION, SNV, sep = "_")) %>%
+    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "LATEST", CODE = paste(location, lineage, sep = "_")) %>%
     dplyr::rename("DATE" = "date") %>%
-    select(LOCATION, SNV, TYPE, DATE, PERCENT, CODE) %>%
+    select(location, lineage, TYPE, DATE, PERCENT, CODE) %>%
     unique()
 }

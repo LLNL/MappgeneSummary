@@ -1,5 +1,5 @@
-library("devtools")
-library("roxygen2")
+library(devtools)
+library(roxygen2)
 
 document()
 
@@ -22,3 +22,7 @@ file.edit("~/Desktop/test.Rmd")
 #MappgeneSummary::get_country_outbreak_info(countries = c("usa", "can"), SNVs = c("S:y1155H", "S:P681H"))
 #MappgeneSummary::get_global_outbreak_info(SNVs = c("S:y1155H", "S:P681H"))
 
+
+# New outbreak.info API and authentication
+library(outbreakinfo)
+authenticateUser()

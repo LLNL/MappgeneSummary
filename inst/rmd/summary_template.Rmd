@@ -28,11 +28,13 @@ library(knitr)
 library(rmdformats)
 library(tidyverse)
 library(jakR)
+library(outbreakinfo)
 library(MappgeneSummary)
+library(purrr)
 library(DT)
 library(patchwork)
 library(ggVennDiagram)
-library(jsonlite)
+#library(jsonlite)
 library(Biostrings)
 library(msa)
 library(ggmsa)
@@ -532,9 +534,8 @@ ar %>%
 The outbreak.info API is currently undergoing changes and is not available.
 
 ```{r}
-location_palette = c("CA" = "#00496F", "USA" = "#EDD746", "GLOBAL" = "#DD4124")
+location_palette = c("California" = "#00496F", "United States" = "#EDD746", "Worldwide" = "#DD4124")
 
-# move this back to the text when the API is working again
 #Note, only mutations with the 'missense_variant' `EFFECT` are searchable in the API. All others are not included below.
 ```
 
@@ -547,8 +548,7 @@ df %>%
   format_dt()
 ```
 
-```{r, eval = F, message=TRUE}
-#```{r, eval = overwrite_Rds_files, message=TRUE}
+```{r, eval = overwrite_Rds_files, message=TRUE}
 top_lofreq = df %>%
   filter(PIPELINE == "lofreq", GENE == "S") %>%
   filter(EFFECT == 'missense_variant') %>%
@@ -559,9 +559,7 @@ top_lofreq = df %>%
   head(api_top_count) %>%
   pull(API_CODE)
 
-top_lofreq_results = bind_rows(get_state_outbreak_info(states = "CA", SNVs = top_lofreq),
-         get_country_outbreak_info(countries = "USA", SNVs = top_lofreq),
-         get_global_outbreak_info(SNVs = top_lofreq))
+top_lofreq_results = get_outbreak_info(top_lofreq)
 
 write_delim(top_lofreq_results, file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.txt"), delim = "\t")
 
@@ -575,14 +573,12 @@ top_ivar = df %>%
   head(api_top_count) %>%
   pull(API_CODE)
 
-top_ivar_results = bind_rows(get_state_outbreak_info(states = "CA", SNVs = top_ivar),
-         get_country_outbreak_info(countries = "USA", SNVs = top_ivar),
-         get_global_outbreak_info(SNVs = top_ivar))
+top_ivar_results = get_outbreak_info(top_ivar)
 
 write_delim(top_ivar_results, file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.txt"), delim = "\t")
 ```
 
-```{r, fig.width=12, fig.height=10, eval = F}
+```{r, fig.width=12, fig.height=10}
 top_lofreq_results = read_delim(file = file.path(summary_output_file_path, "_lofreq_top_outbreak_results.txt"), delim = "\t")
 
 top_ivar_results = read_delim(file = file.path(summary_output_file_path, "_ivar_top_outbreak_results.txt"), delim = "\t")
@@ -605,7 +601,7 @@ b = plot_outbreak_trends(top_ivar_results, title = "iVar Proportions (free y-axi
 a + b
 ```
 
-```{r, fig.width=12, fig.height=10, eval = F}
+```{r, fig.width=12, fig.height=10}
 m = bind_rows(top_lofreq_results, top_ivar_results) %>%
       get_outbreak_peak()
 
@@ -620,7 +616,7 @@ l = bind_rows(top_lofreq_results, top_ivar_results) %>%
   get_outbreak_latest()
 
 bind_rows(f, l, m) %>%
-  select(SNV, LOCATION, DATE, TYPE, CODE) %>%
+  select(lineage, location, DATE, TYPE, CODE) %>%
   pivot_wider(values_from = DATE, names_from = TYPE) %>%
   left_join(m_light, by = "CODE") %>%
   select(-CODE) %>%
@@ -628,29 +624,29 @@ bind_rows(f, l, m) %>%
   format_dt()
 
 bind_rows(m, f, l) %>%
-  mutate(LOCATION = as.factor(LOCATION), LOCATION = fct_relevel(LOCATION, c("CA", "USA", "GLOBAL"))) %>%
-  mutate(SNV = as.factor(SNV), SNV = fct_relevel(SNV, rev(levels(SNV)))) %>%
-  ggplot(aes(x = DATE, y = LOCATION, fill = TYPE)) +
+  mutate(location = as.factor(location), location = fct_relevel(location, c("CA", "USA", "GLOBAL"))) %>%
+  mutate(lineage = as.factor(lineage), lineage = fct_relevel(lineage, rev(levels(lineage)))) %>%
+  ggplot(aes(x = DATE, y = location, fill = TYPE)) +
     jak_theme() +
     geom_point(pch = 21, size = 3, alpha = 0.7) +
     scale_fill_manual(values = palette_jak$bay(3)) +
-    facet_wrap(~SNV, ncol = 3) +
+    facet_wrap(~lineage, ncol = 3) +
     labs(title = "First, last and peak occurrence", x = "Month-Year") + 
     scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
 ```
 
-```{r, fig.width=12, fig.height=10, eval = F}
+```{r, fig.width=12, fig.height=10}
 bind_rows(m, f, l) %>%
-  mutate(LOCATION = as.factor(LOCATION), LOCATION = fct_relevel(LOCATION, c("GLOBAL", "USA", "CA"))) %>%
-  mutate(SNV = as.factor(SNV), SNV = fct_relevel(SNV, rev(levels(SNV)))) %>%
+  mutate(location = as.factor(location), location = fct_relevel(location, c("Worldwide", "United States", "California"))) %>%
+  mutate(lineage = as.factor(lineage), lineage = fct_relevel(lineage, rev(levels(lineage)))) %>%
   mutate(TYPE = fct_relevel(TYPE, 'FIRST', 'PEAK', 'LAST')) %>%
   arrange(TYPE) %>% # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
-  ggplot(aes(x = DATE, y = TYPE, color = LOCATION)) +
+  ggplot(aes(x = DATE, y = TYPE, color = location)) +
     jak_theme() +
-    geom_path(aes(group = LOCATION), size = 1, alpha = 0.7) + # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
+    geom_path(aes(group = location), size = 1, alpha = 0.7) + # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
     geom_point(size = 2, alpha = 0.7) +
     scale_color_manual(values = location_palette) +
-    facet_wrap(~SNV, ncol = 3) +
+    facet_wrap(~lineage, ncol = 3) +
     labs(title = "First, peak and last occurrence", x = "Month-Year") + 
     scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
 ```
@@ -658,8 +654,6 @@ bind_rows(m, f, l) %>%
 # VOI & VOC
 
 ```{r}
-library(purrr)
-
 VOI_VOC_OTHER = readxl::read_excel(system.file("extdata", "mutation list for VOC and VOI 12.02.21v2.xlsx", package = "MappgeneSummary"), sheet = "Sheet1", col_names = FALSE)
 colnames(VOI_VOC_OTHER) = c("GENE", "VOI_VOC", "AA_RANGE")
 VOI_VOC_OTHER = VOI_VOC_OTHER %>%

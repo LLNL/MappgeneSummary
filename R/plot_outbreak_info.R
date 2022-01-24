@@ -15,14 +15,14 @@
 plot_outbreak_trends = function(df, title = "Proportions (free y-axis scale)") {
 
   # guess the number of columns, keeping max of 6 rows
-  ncols = ceiling((pull(df, SNV) %>% na.omit() %>% unique() %>% length()) / 6)
+  ncols = ceiling((pull(df, lineage) %>% na.omit() %>% unique() %>% length()) / 6)
 
   df %>%
     filter(total_count > 0) %>%
-    group_by(SNV) %>%
-    ggplot(aes(x = date, y = 100 * proportion, fill = LOCATION, color = LOCATION)) +
-      geom_line(aes(group = LOCATION), alpha = 0.8) +
-      facet_wrap(~SNV, ncol = ncols, scales = "free_y") +
+    group_by(lineage) %>%
+    ggplot(aes(x = date, y = 100 * proportion, fill = location, color = location)) +
+      geom_line(aes(group = location), alpha = 0.8) +
+      facet_wrap(~lineage, ncol = ncols, scales = "free_y") +
       labs(title = title, y = "Proportion (%)", x = "Month-Year") +
       scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
 }
