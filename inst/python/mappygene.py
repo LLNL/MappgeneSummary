@@ -7,7 +7,7 @@ __author__ = 'Tyshawn Ferrell and Jose Manuel Martí'
 __email__ = 'martimartine1 **AT** llnl.gov'
 __status__ = 'Alpha'
 __date__ = 'Jan 2022'
-__version__ = '0.0.7'
+__version__ = '0.1.0'
 
 # Python Standard Library
 import io
@@ -125,13 +125,15 @@ class Gene(NamedTuple):
         else:
             return (self.end - 2 - self.start) // 3
 
-    def pos_gene2genome(self, pos: int, src: Target = Target.NT,
+    def pos_gene2genome(self, pos: int,
+                        src: Target = Target.NT,
                         tgt: Target = Target.NT) -> List[int]:
         """Convert a position in the gene to a position in the genome"""
         if src is Target.AA:
             pos = 3 * pos - 2
         if pos >= len(self):
-            raise ValueError(f"Position {pos} exceeds the length of the gene")
+            raise ValueError(f"{self.name}.pos_gene2genome:"
+                             f" Position {pos} exceeds the length of the gene")
         pos = pos + self.start - 1
         if tgt is Target.AA:
             pos = (pos + 2) / 3
@@ -139,13 +141,15 @@ class Gene(NamedTuple):
             return [pos, pos + 1, pos + 2]
         return [pos]
 
-    def pos_genome2gene(self, pos: int, src: Target = Target.NT,
+    def pos_genome2gene(self, pos: int,
+                        src: Target = Target.NT,
                         tgt: Target = Target.NT) -> List[int]:
         """Convert a position in the genome to a position in the gene"""
         if src is Target.AA:
             pos = 3 * pos - 2
         if pos < self.start or pos > self.end:
-            raise ValueError(f"Position {pos} does not belong to the gene")
+            raise ValueError(f"{self.name}.pos_genome2gene:"
+                             f" Position {pos} does not belong to the gene")
         pos = pos - self.start + 1
         if tgt is Target.AA:
             pos = (pos + 2) / 3
@@ -162,7 +166,8 @@ class Gene(NamedTuple):
             end: int = self.end
         return self.ref_seq[start:end].translate().seq
 
-    def valid_mutation(self, mut: Mutation, verb: bool = True) -> bool:
+    def valid_mutation(self, mut: Mutation,
+                       verb: bool = True) -> bool:
         """Check validity of a mutation (True/False)"""
 
         def vprint(*arg, **kwarg):
@@ -171,7 +176,8 @@ class Gene(NamedTuple):
 
         # Check for name of gene
         if mut['gen'] != self.name:
-            vprint("Mutation does not belong to this gene!")
+            vprint(f"{self.name}.valid_mutation:"
+                   f" Mutation does not belong to this gene!")
             return False
         # Check for nuc/aa in the reference
         ref: str
@@ -186,7 +192,8 @@ class Gene(NamedTuple):
             return False
         return True
 
-    def explain_aa_mutation(self, mut: Mutation, verb: bool = True) -> Dict[
+    def explain_aa_mutation(self, mut: Mutation,
+                            verb: bool = True) -> Dict[
         Seq, List[Tuple[int, str, str]]]:
         """Explain an AA mutation in terms of nucleotide mutation(s)
 
@@ -202,7 +209,7 @@ class Gene(NamedTuple):
         if not self.valid_mutation(mut, verb=verb):
             raise ValueError("This mutation is not valid!")
         # Try to explain it
-        ref = self.translate_()[mut['loc'] - 1]
+        #ref = self.translate_()[mut['loc'] - 1]
         lst = self.pos_gene2genome(mut['loc'], src=Target.AA, tgt=Target.NT)
         seq_ref = self.ref_seq[lst[0] - 1:lst[-1]].seq
         #        print(seq_ref.translate())
@@ -227,7 +234,8 @@ class Gene(NamedTuple):
         nt_ini_abs = self.pos_gene2genome(aa_ini,
                                           src=Target.AA, tgt=Target.NT)[0]
         nt_end_abs = self.pos_gene2genome(aa_end,
-                                          src=Target.AA, tgt=Target.NT)[0]
+                                          src=Target.AA, tgt=Target.NT)[0] + 2
+        # Adding 2 NT to account until the last NT of the last codon
         return Gene(self.ref_seq, name, nt_ini_abs, nt_end_abs)
 
     def __repr__(self) -> str:
@@ -315,9 +323,12 @@ genes.extend(nsps)  # Extend general gene list with nsp list
 def pos2genes(pos:int, gene_name:str=None,
               tgt_genes:List[Gene]=None,
               exclude_gene_name:bool=False,
-              out_type:str='dict'
+              out_type:str='dict',
+              src: Target = Target.AA,
+              tgt: Target = Target.AA,
+              ddebug: bool = False,
               ) -> Union[Dict[str,int], List[str], str] :
-    """Get dict of genes/rel_pos corresponding to NT pos in the genome or genes
+    """Get dict of genes/rel_pos corresponding to pos in the genome or genes
 
     pos: position for the search, relative of absolute depending on next param
     gene_name: If not set the position will be absolute for the genome,
@@ -326,31 +337,44 @@ def pos2genes(pos:int, gene_name:str=None,
     exclude_gene_name: if True and gene_name set, exclude it from the output
     out_type: 'dict' for dict of gene:position, 'list' for list of "gene.pos",
       or 'str' for just a string with "gene.pos gene.pos" and so forth.
+    src: Target enum indicating kind of position for the source (gene_name)
+    tgt: Target enum indicating kind of position for the targets (tgt_genes)
+    ddebug: Double debug boolean
     """
     # Initialization
     if tgt_genes is None:
         tgt_genes = genes
     touched:Dict[str,int] = {}
-    abs_pos:int = 0
-    # Get the absolute position in the genome for the NT
+    abs_pos:int  # Absolute position in the genome in NT
+    # Get abs_pos
     if gene_name is None:
+        if src is Target.AA:
+            pos = 3 * pos - 2
         abs_pos = pos
     else:
         try:
             abs_pos = eval(gene_name).pos_gene2genome(
-                pos, src=Target.NT, tgt=Target.NT)[0]
+                pos, src=src, tgt=Target.NT)[0]
         except ValueError:  # Assume then the pos is absolute
+            if src is Target.AA:
+                pos = 3 * pos - 2
             abs_pos = pos
+    if ddebug:
+        print(f'{gene_name}: {pos} {src} converted to {abs_pos} {Target.NT}')
     # Get the genes and relative position containing the absolute position
     for gene in tgt_genes:
-        rel_pos: int
+        rel_pos:int
         try:
             rel_pos = gene.pos_genome2gene(
-                abs_pos, src = Target.NT, tgt = Target.NT)[0]
+                abs_pos, src=Target.NT, tgt=tgt)[0]
         except ValueError:  # No hit!
+            if ddebug:
+                print('No hit for', gene, 'for abs_pos =', abs_pos, Target.NT)
             pass
         else:  # Hit!
-            touched[gene.name] = rel_pos
+            if ddebug:
+                print('HIT for', gene, 'for abs_pos =', abs_pos, Target.NT)
+            touched[gene.name] = rel_pos if tgt is Target.NT else int(rel_pos)
     # Exclude gene_name from the output if it's there
     if exclude_gene_name:
         touched.pop(gene_name, None)
@@ -382,10 +406,12 @@ def mappgene_summary_populate_df_cols(df:pd.DataFrame,
     def df_apply_pos2genes(tgt_genes: List[Gene], col:str,
                            exclude_gene_name:bool = False) -> None:
         """Aux: use df.apply with pos2genes for each row of the df"""
+        # CAUTION: row.POS is absolute (chromosome), no rel to row.GENE
         df[col] = df.apply(
-            lambda row: pos2genes(row.POS, gene_name=row.GENE,
+            lambda row: pos2genes(row.POS, # gene_name=row.GENE,
                                   tgt_genes=tgt_genes, out_type=out_type,
-                                  exclude_gene_name=exclude_gene_name),
+                                  exclude_gene_name=exclude_gene_name,
+                                  src=Target.NT, tgt=Target.AA),
             axis=1)
 
     # NSPs or all genes
@@ -407,9 +433,8 @@ def do_checks():
     print(refseq)
 
     # Set the input for the example code (a mutation described with AA)
-    MUTATION:str = "ORF1b:P314L"  # This is an example from outbreak.info to start with
-    mutation_target = Target.AA  # Let's fix this by now
-    mut = Mutation(MUTATION)
+    mut_name:str = "ORF1b:P314L"  # This is an example from outbreak.info to start with
+    mut = Mutation(mut_name)
     print(mut)
 
     print('> Explain S:P681H mutation:', end='')
@@ -444,26 +469,43 @@ def do_checks():
             print(f'Position {abs_pos} ({src_pos}) in genome corresponds to '
                   f'position {int(rel_pos)} ({tgt_pos}) in {gene.name} gene')
 
-    NSP3_rel_ini_aa: int = int(ORF1ab.pos_genome2gene(
+    nsp3_rel_ini_aa: int = int(ORF1ab.pos_genome2gene(
         NSP3.start, src=Target.NT, tgt=Target.AA)[0])
-    NSP3_rel_end_aa: int = int(ORF1ab.pos_genome2gene(
+    nsp3_rel_end_aa: int = int(ORF1ab.pos_genome2gene(
         NSP3.end, src=Target.NT, tgt=Target.AA)[0])
     print(
         f'\n> NSP3 has {NSP3.num_codons()} AAs, '
-        f'from {NSP3_rel_ini_aa} to {NSP3_rel_end_aa} of ORF1ab.')
-    NSP16_rel_ini_aa: int = int(ORF1ab.pos_genome2gene(
+        f'from {nsp3_rel_ini_aa} to {nsp3_rel_end_aa} of ORF1ab.')
+    nsp16_rel_ini_aa: int = int(ORF1ab.pos_genome2gene(
         NSP16.start, src=Target.NT, tgt=Target.AA)[0])
-    NSP16_rel_end_aa: int = int(ORF1ab.pos_genome2gene(
+    nsp16_rel_end_aa: int = int(ORF1ab.pos_genome2gene(
         NSP16.end, src=Target.NT, tgt=Target.AA)[0])
     print(
         f'> NSP16 has {NSP16.num_codons()} AAs, '
-        f'from {NSP16_rel_ini_aa} to {NSP16_rel_end_aa} of ORF1ab.')
+        f'from {nsp16_rel_ini_aa} to {nsp16_rel_end_aa} of ORF1ab.')
+    gene_name:str = "ORF1ab"
+    mut_aa_pos:int = 4715
     print(
-        f'\n> Mutation in pos 422 of ORF1ab corresponds to mutations:'
-        f' {pos2genes(422, "ORF1ab")}, \n  so to NSPs (if any):'
-        f' {pos2genes(422, "ORF1ab", tgt_genes=nsps, out_type="str")}')
-
-
+        f'\n> Mut in AA pos {mut_aa_pos} of {gene_name} corresponds to muts:'
+        f' {pos2genes(mut_aa_pos, gene_name)}, \n  so to NSPs (if any):'
+        f' {pos2genes(mut_aa_pos, gene_name, tgt_genes=nsps, out_type="str")}')
+    gene_name:str = "ORF1ab"
+    mut_nt_pos:int = 539
+    all_muts = pos2genes(mut_nt_pos, gene_name, src=Target.NT, tgt=Target.AA)
+    nsp_muts = pos2genes(mut_nt_pos, gene_name,
+                         tgt_genes=nsps, out_type="str",
+                         src=Target.NT, tgt=Target.AA, ddebug=False)
+    print(
+        f'\n> Mut in NT pos {mut_nt_pos} of {gene_name} corresponds to muts:'
+        f' {all_muts}\n  so to NSPs (if any): {nsp_muts}')
+    mut_abs_nt_pos:int = 14408
+    all_muts = pos2genes(mut_abs_nt_pos, src=Target.NT, tgt=Target.AA)
+    nsp_muts = pos2genes(mut_abs_nt_pos,
+                         tgt_genes=nsps, out_type="str",
+                         src=Target.NT, tgt=Target.AA, ddebug=False)
+    print(
+        f'\n> Mut in absolute NT pos {mut_abs_nt_pos} corresponds to muts:'
+        f' {all_muts}\n  so to NSPs (if any): {nsp_muts}')
 if __name__ == '__main__':
     # Check that we got it right
     if debug:
