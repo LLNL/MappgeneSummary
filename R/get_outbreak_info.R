@@ -11,7 +11,7 @@
 get_outbreak_info = function(SNVs) {
   df = data.frame()
 
-  for (SNV in top_lofreq) {
+  for (SNV in SNVs) {
     California = getPrevalence(mutations = SNV, location = "California", logInfo = FALSE)
     USA = getPrevalence(mutations = SNV, location = "United States", logInfo = FALSE)
     Global = getPrevalence(mutations = SNV, logInfo = FALSE)
