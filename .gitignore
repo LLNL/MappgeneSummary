@@ -6,3 +6,4 @@ inst/rmd/.DS_Store
 .DS_Store
 inst/rmd/summary_template.html
 *.Rds
+inst/doc

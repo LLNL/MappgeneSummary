@@ -24,5 +24,8 @@ file.edit("~/Desktop/test.Rmd")
 
 
 # New outbreak.info API and authentication
-library(outbreakinfo)
-authenticateUser()
+#library(outbreakinfo)
+#authenticateUser()
+
+# vignette (https://r-pkgs.org/vignettes.html)
+usethis::use_vignette("my-vignette")
