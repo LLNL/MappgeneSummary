@@ -4,7 +4,12 @@
 \alias{plot_outbreak_trends}
 \title{Plot trend data by location from outbreak API}
 \usage{
-plot_outbreak_trends(df, title = "Proportions (free y-axis scale)")
+plot_outbreak_trends(
+  df,
+  title = "Proportions (free y-axis scale)",
+  line_width = 1,
+  line_alpha = 0.8
+)
 }
 \arguments{
 \item{df}{A tibble or dataframe from one of the get outbreak functions}

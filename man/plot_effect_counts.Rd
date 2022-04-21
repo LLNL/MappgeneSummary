@@ -4,7 +4,12 @@
 \alias{plot_effect_counts}
 \title{Barchart summary of the SNPsift Effects}
 \usage{
-plot_effect_counts(df)
+plot_effect_counts(
+  df,
+  keeper_effects = c("stop_gained", "missense_variant",
+    "conservative_inframe_deletion", "conservative_inframe_insertion",
+    "disruptive_inframe_deletion", "disruptive_inframe_insertion")
+)
 }
 \arguments{
 \item{df}{Dataframe or tibble}

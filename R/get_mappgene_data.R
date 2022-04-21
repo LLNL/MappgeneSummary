@@ -29,6 +29,7 @@ read_mappgene_data = function(path, workflow = c("ivar", "lofreq"), sample_clean
                   comment = "##",
                   simplify = FALSE,
                   col_types = "ficcdifffcciic") %>%
+      lapply(\(x) mutate(x, across(ALT_QUAL, as.double))) %>% # to fix when a file is empty
       bind_rows(.id = "id")
 
     ivar = ivar %>%
@@ -50,6 +51,7 @@ read_mappgene_data = function(path, workflow = c("ivar", "lofreq"), sample_clean
                     comment = "##",
                     simplify = FALSE,
                     col_types = "ficcdifffcciic") %>%
+      lapply(\(x) mutate(x, across(ALT_QUAL, as.double))) %>% # to fix when a file is empty
       bind_rows(.id = "id")
     l$lofreq = lofreq
   }

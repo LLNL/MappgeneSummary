@@ -5,7 +5,12 @@
 #' @export
 #'
 
-plot_effect_counts = function(df) {
+plot_effect_counts = function(df, keeper_effects = c('stop_gained',
+                                                     'missense_variant',
+                                                     'conservative_inframe_deletion',
+                                                     'conservative_inframe_insertion',
+                                                     'disruptive_inframe_deletion',
+                                                     'disruptive_inframe_insertion')) {
 
   df %>%
     group_by(EFFECT, PIPELINE) %>%
