@@ -654,32 +654,27 @@ bind_rows(m, f, l) %>%
 # VOI & VOC
 
 ```{r}
-VOI_VOC_OTHER = readxl::read_excel(system.file("extdata", "mutation list for VOC and VOI 12.02.21v2.xlsx", package = "MappgeneSummary"), sheet = "Sheet1", col_names = FALSE)
-colnames(VOI_VOC_OTHER) = c("GENE", "VOI_VOC", "AA_RANGE")
-VOI_VOC_OTHER = VOI_VOC_OTHER %>%
-  unique() %>%
-  select("GENE", "VOI_VOC", "AA_RANGE") %>%
-  mutate(TYPE = "Other")
+a = readxl::read_excel(system.file("extdata", "mutation list for VOC and VOI 11.16.21.xlsx", package = "MappgeneSummary"), col_names = FALSE)
+b1 = readxl::read_excel(system.file("extdata", "mutation list for VOC and VOI 12.02.21v2.xlsx", package = "MappgeneSummary"), sheet = 1, col_names = FALSE)
+b2 = readxl::read_excel(system.file("extdata", "mutation list for VOC and VOI 12.02.21v2.xlsx", package = "MappgeneSummary"), sheet = 2, col_names = FALSE)
+c = readxl::read_excel(system.file("extdata", "updated omicron and sublineages mutations 05.04.2022.xlsx", package = "MappgeneSummary"))
 
-VOI_VOC_OMICRON = readxl::read_excel(system.file("extdata", "mutation list for VOC and VOI 12.02.21v2.xlsx", package = "MappgeneSummary"), sheet = "omicron", col_names = FALSE)
-colnames(VOI_VOC_OMICRON) = c("GENE", "VOI_VOC", "AA_RANGE")
-VOI_VOC_OMICRON = VOI_VOC_OMICRON %>%
-  unique() %>%
-  #select("GENE", "VOI_VOC", "AA_RANGE") %>%
-  mutate(TYPE = "OMICRON")
+colnames(a) = c("GENE", "VOI_VOC", "AA_RANGE")
+colnames(b1) = c("GENE", "VOI_VOC", "AA_RANGE")
+colnames(b2) = c("GENE", "VOI_VOC", "AA_RANGE")
+colnames(c) = c("GENE", "VOI_VOC", "AA_RANGE")
 
-VOI_VOC = rbind(VOI_VOC_OTHER, VOI_VOC_OMICRON)
-
-VOI_VOC = VOI_VOC %>%
+VOI_VOC = rbind(a[,1:3], b1[,1:3], b2[,1:3], c[,1:3]) %>%
   unique() %>%
-  #select("GENE", "VOI_VOC", "AA_RANGE") %>%
   separate(AA_RANGE, sep = "/", into = c("A", "B"), remove = F) %>%
-  mutate(B = ifelse(is.na(B), A, B)) %>%
-  transmute(GENE, VOI_VOC, AA_RANGE, TYPE, AA_POS = map2(A, B, seq, by = 1)) %>%
-  unnest(cols = AA_POS) %>%
+  mutate(B = ifelse(is.na(B), A, B)) %>% 
+  transmute(GENE, VOI_VOC, AA_RANGE, AA_POS = map2(A, B, seq, by = 1)) %>% 
+  unnest(cols = AA_POS) %>% 
   mutate(CODE = paste(GENE, AA_POS, sep = "_")) %>%
-  select(-GENE, -AA_POS)
+  select(-GENE, -AA_POS) %>% arrange(CODE)
+```
 
+```{r}
 df_VOI_VOC = readRDS(file = file.path(summary_output_file_path, "_summary_DF.Rds")) %>%
   mutate(GENE = case_when(
     GENE == "ORF1ab" & AA_POS >= 4401 ~ "ORF1b",
@@ -689,16 +684,20 @@ df_VOI_VOC = readRDS(file = file.path(summary_output_file_path, "_summary_DF.Rds
   mutate(AA_POS = ifelse(GENE == "ORF1b", AA_POS - 4401, AA_POS)) %>% 
   mutate(CODE = paste(GENE, AA_POS, sep = "_"))
 
-df_VOI_VOC %>%
+df_VOI_VOC = df_VOI_VOC %>%
   left_join(VOI_VOC, by = "CODE") %>%
   select(-FILE, -SNV, -REF, -ALT, -CDNA_POS) %>%
   filter(VOI_VOC != "NA") %>% 
   arrange(GENE, AA_RANGE) %>%
-  group_by(GENE, NSP, ORF, VOI_VOC, TYPE, AA_RANGE, AA_POS, REF_AA,  ALT_AA, HGVS_C, HGVS_P, PIPELINE) %>%
+  group_by(GENE, NSP, ORF, VOI_VOC, AA_RANGE, AA_POS, REF_AA,  ALT_AA, HGVS_C, HGVS_P, PIPELINE) %>%
   summarize(SAMPLE_LIST = list(SAMPLE)) %>%
   mutate(SAMPLE_COUNT = lengths(SAMPLE_LIST), SAMPLES = mapply(paste0, SAMPLE_LIST, collapse = ",")) %>%
-  select(-SAMPLE_LIST) %>%
+  select(-SAMPLE_LIST)
+
+df_VOI_VOC %>%
   format_dt(row_count = 20, file = "VOI_VOC_list")
+
+df_VOI_VOC %>% write_delim(file.path(summary_output_file_path, "_VOI_VOC.txt"), delim = "\t")
 ```
 
 # Session Info
