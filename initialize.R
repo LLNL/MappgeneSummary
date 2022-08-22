@@ -1,9 +1,9 @@
-library(devtools)
-library(roxygen2)
+# library(devtools)
+# library(roxygen2)
 
-document()
+devtools::document()
 
-install("../MappgeneSummary")
+devtools::install("../MappgeneSummary")
 packageVersion("MappgeneSummary")
 
 #if (!requireNamespace("BiocManager", quietly = TRUE))

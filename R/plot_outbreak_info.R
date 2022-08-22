@@ -94,9 +94,10 @@ plot_outbreak_milestones = function(df, snv_list, ncol = 2, min.date = NA, max.d
 
   b2 = bind_rows(f, l, p) %>%
     mutate(lineage = fct_relevel(lineage, levels(snv_list))) %>%
-    ggplot(aes(x = DATE, y = location, fill = TYPE)) +
-      geom_point(pch = 21, size = 3, alpha = 0.7) +
-      scale_fill_manual(values = color_palette(3)) +
+    ggplot(aes(x = DATE, y = location, shape = TYPE)) +
+      geom_point(size = 3) +
+      #scale_fill_manual(values = color_palette(3)) +
+      scale_shape_manual(values = c("FIRST" = 3, "PEAK" = 2, "LATEST" = 4)) +
       facet_wrap(~lineage, ncol = ncol) +
       labs(title = "First, last and peak occurrence", x = "Month-Year") +
       theme(legend.position = "right") +
