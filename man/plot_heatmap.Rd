@@ -4,7 +4,7 @@
 \alias{plot_heatmap}
 \title{Plot Heatmap of Specific Gene}
 \usage{
-plot_heatmap(df, columns = "SAMPLE", rows = "SNV", na.value = 0)
+plot_heatmap(df, columns = "SAMPLE", rows = "SNV", na.value = 0, ...)
 }
 \arguments{
 \item{df}{A tibble or dataframe from one of the get outbreak functions}

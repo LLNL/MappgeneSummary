@@ -13,7 +13,7 @@
 #' plot_heatmap(df, rows = "SNV", columns = "SAMPLE")
 #' df %>% filter(GENE == "ORF3a") %>% plot_heatmap(rows = "EFFECT", columns = "SAMPLE")
 
-plot_heatmap = function(df, columns = "SAMPLE", rows = "SNV", na.value = 0) {
+plot_heatmap = function(df, columns = "SAMPLE", rows = "SNV", na.value = 0, ...) {
   require(pheatmap)
 
   df %>%
