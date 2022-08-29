@@ -8,15 +8,22 @@
 #' get_outbreak_info(SNVs = "S:Y1155H")
 #'
 
-get_outbreak_info = function(SNVs) {
+get_outbreak_info = function(SNVs, states = "California") {
   df = data.frame()
 
   for (SNV in SNVs) {
-    California = getPrevalence(mutations = SNV, location = "California", logInfo = FALSE)
+    state_df = data.frame()
+
+    for (state in states) {
+      state_data = getPrevalence(mutations = SNV, location = state, logInfo = FALSE)
+      df = rbind(state_df, state_data)
+    }
+
+
     USA = getPrevalence(mutations = SNV, location = "United States", logInfo = FALSE)
     Global = getPrevalence(mutations = SNV, logInfo = FALSE)
 
-    df = rbind(df, California, USA, Global)
+    df = rbind(df, state_df, USA, Global)
   }
 
   return(df)

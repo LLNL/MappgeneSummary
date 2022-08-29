@@ -4,7 +4,7 @@
 \alias{get_outbreak_info}
 \title{Data from outbreak API}
 \usage{
-get_outbreak_info(SNVs)
+get_outbreak_info(SNVs, states = "California")
 }
 \arguments{
 \item{SNVs}{A SNV or vector of SNVs formatted for the outbreak API (eg S:Y1155H)}
