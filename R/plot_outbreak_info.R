@@ -103,20 +103,6 @@ plot_outbreak_milestones = function(df, snv_list, ncol = 2, min.date = NA, max.d
       theme(legend.position = "right") +
       scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
 
-  b3 = bind_rows(f, l, p) %>%
-    mutate(TYPE = fct_relevel(TYPE, 'FIRST', 'PEAK', 'LATEST')) %>%
-    arrange(TYPE) %>% # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
-    mutate(lineage = fct_relevel(lineage, levels(snv_list))) %>%
-    mutate(location = fct_relevel(location, 'Worldwide', 'United States', 'California')) %>%
-    ggplot(aes(x = DATE, y = TYPE, color = location)) +
-      geom_path(aes(group = location), size = line_width, alpha = line_alpha) + # some wonkiness to get the line to plot in the right order when two TYPEs have the same data
-      geom_point(size = 2, alpha = 0.7) +
-      scale_color_manual(values = colors) +
-      facet_wrap(~lineage, ncol = ncol) +
-      labs(title = "First, peak and last occurrence", x = "Month-Year") +
-      theme(legend.position = "right") +
-      scale_x_date(date_breaks = "months" , date_labels = "%b-%y")
-
-  l = list("A" = b1, "B" = b2, "C" = b3, "peak" = p, "start" = f, "latest" = l)
+  l = list("A" = b1, "B" = b2, "peak" = p, "start" = f, "latest" = l)
 
 }

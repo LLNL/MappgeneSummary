@@ -16,7 +16,7 @@ get_outbreak_info = function(SNVs, states = "California") {
 
     for (state in states) {
       state_data = getPrevalence(mutations = SNV, location = state, logInfo = FALSE)
-      df = rbind(state_df, state_data)
+      state_df = rbind(state_df, state_data)
     }
 
 
