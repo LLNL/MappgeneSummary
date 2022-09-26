@@ -3,7 +3,7 @@
 # Installation from Github
 
 ```
-install_github("jeffkimbrel/MappgeneSummary")
+install_github("LLNL/MappgeneSummary")
 ```
 
 Additionally, there are a few functions and color palettes from the `jakR` package. Install from github...
