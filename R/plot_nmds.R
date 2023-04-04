@@ -30,16 +30,17 @@ plot_nmds = function(df, points = "SAMPLE", species = "SNV", distance = "bray") 
     t() %>%
     vegan::metaMDS(distance = distance, binary = set_binary, trace = 0)
 
-  points.df = vegan::scores(df.v1) %>%
+  points.df = vegan::scores(df.v1)$sites %>%
     as.data.frame() %>%
     rownames_to_column(points)
 
-  species.df = as.data.frame(df.v1$species) %>%
+  species.df = vegan::scores(df.v1)$species %>%
+    as.data.frame() %>%
     rownames_to_column(species)
 
   g = ggplot(points.df, aes(x = NMDS1, y = NMDS2)) +
     ggrepel::geom_text_repel(aes_string(label = points), size = 3) +
-    geom_point(data = species.df, size = 1, alpha = 0.3, aes(x = MDS1, y= MDS2)) +
+    geom_point(data = species.df, size = 1, alpha = 0.3, aes(x = NMDS1, y= NMDS2)) +
     geom_point(size = 3, pch = 24, alpha = 0.8, fill = "#037bcf") +
     theme(legend.position = "right") +
     labs(title = paste(points, "*", species), subtitle = paste("Distance =", distance, ", Stress =", df.v1$stress * 100))

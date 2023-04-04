@@ -6,9 +6,9 @@
 \usage{
 plot_effect_counts(
   df,
-  keeper_effects = c("stop_gained", "missense_variant",
-    "conservative_inframe_deletion", "conservative_inframe_insertion",
-    "disruptive_inframe_deletion", "disruptive_inframe_insertion")
+  keeper_effects = c("stop_gained", "missense_variant", "conservative_inframe_deletion",
+    "conservative_inframe_insertion", "disruptive_inframe_deletion",
+    "disruptive_inframe_insertion")
 )
 }
 \arguments{
