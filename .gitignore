@@ -7,3 +7,4 @@ inst/rmd/.DS_Store
 inst/rmd/summary_template.html
 *.Rds
 inst/doc
+initialize.R

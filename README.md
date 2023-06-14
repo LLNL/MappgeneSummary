@@ -46,3 +46,9 @@ params:
 - `summary_output_file_path`: The path location of the output files.
 - `overwrite_Rds_files`: Some code blocks take time to run. Set to `TRUE` to run all code blocks, or to `FALSE` to use saved Rds files.
 - `api_top_count`: Number of Outbreak API SNVs to generate plots for.
+
+# Citation
+
+If you use `mappgeneSummary` in your work, please cite:
+
+Viruses 2022, 14(12), 2775; https://doi.org/10.3390/v14122775 
