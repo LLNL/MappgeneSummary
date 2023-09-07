@@ -67,7 +67,7 @@ read_mappgene_data = function(path, workflow = c("ivar", "lofreq"), sample_clean
   names(df) = gsub(x = names(df), pattern = "ANN\\[\\*\\]\\.", replacement = "")
 
   df = df %>%
-    select("SAMPLE", "PIPELINE", "GENE", "POS", "REF", "ALT", "AF", "DP", "EFFECT",
+    select("SAMPLE", "PIPELINE", "GENE", "FEATUREID", "POS", "REF", "ALT", "AF", "DP", "EFFECT",
            "HGVS_C", "HGVS_P", "CDNA_POS", "AA_POS", "FILE") %>%
     unique()%>%
     mutate(ALT_DP = as.integer(DP * AF)) %>%

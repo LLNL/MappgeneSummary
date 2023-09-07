@@ -1,7 +1,7 @@
 Package: MappgeneSummary
 Type: Package
 Title: Summarize Mappgene SNV Data
-Version: 0.9.0
+Version: 0.9.1
 Author: Who wrote it
 Maintainer: Jeff Kimbrel <kimbrel1@llnl.gov>
 Description: This is an R package for working with and summarizing SNV data from mappgene.
