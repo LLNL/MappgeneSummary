@@ -11,9 +11,9 @@ read_mappgene_data(
 )
 }
 \arguments{
-\item{path}{The path to the folder with the *.ivar.lofreq.snpSIFT.txt files.}
+\item{path}{The path to the folder with the .ivar.snpSIFT.txt and .ivar.lofreq.snpSIFT.txt files.}
 
-\item{workflow}{The mappgene workflow type(s). Accepts a single string, or a vector of both ivar and lofreq.}
+\item{workflow}{The mappgene workflow type(s). Accepts a single string, or a vector of both "ivar" and "lofreq".}
 
 \item{sample_cleanup}{Additional text to remove from the sample names.}
 }
