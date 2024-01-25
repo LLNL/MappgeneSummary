@@ -19,8 +19,6 @@
 #' @family "example datasets"
 "example_df_C_ivar"
 
-
-
 #' Example iVar, lofreq snpSIFT dataframes A
 #'
 #' @format ## `example_df_A_lofreq`
