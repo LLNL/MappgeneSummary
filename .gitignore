@@ -8,3 +8,4 @@ inst/rmd/summary_template.html
 *.Rds
 inst/doc
 initialize.R
+.R_outbreak-info-token

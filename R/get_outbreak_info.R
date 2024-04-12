@@ -1,6 +1,7 @@
 #' Data from outbreak API
 #'
 #' @param SNVs A SNV or vector of SNVs formatted for the outbreak API (eg S:Y1155H)
+#' @param states A state or states to pull data from
 #'
 #' @export
 #'
@@ -15,13 +16,13 @@ get_outbreak_info = function(SNVs, states = "California") {
     state_df = data.frame()
 
     for (state in states) {
-      state_data = getPrevalence(mutations = SNV, location = state, logInfo = FALSE)
+      state_data = outbreakinfo::getPrevalence(mutations = SNV, location = state, logInfo = FALSE)
       state_df = rbind(state_df, state_data)
     }
 
 
-    USA = getPrevalence(mutations = SNV, location = "United States", logInfo = FALSE)
-    Global = getPrevalence(mutations = SNV, logInfo = FALSE)
+    USA = outbreakinfo::getPrevalence(mutations = SNV, location = "United States", logInfo = FALSE)
+    Global = outbreakinfo::getPrevalence(mutations = SNV, logInfo = FALSE)
 
     df = rbind(df, state_df, USA, Global)
   }
@@ -41,9 +42,6 @@ get_outbreak_info = function(SNVs, states = "California") {
 
 get_state_outbreak_info = function(states, SNVs) {
 
-  require(tidyverse)
-  require(jsonlite)
-
   df = data.frame()
 
   for (state in states) {
@@ -52,27 +50,29 @@ get_state_outbreak_info = function(states, SNVs) {
     for (SNV in SNVs) {
       SNV = toupper(SNV)
 
-      state_data = tryCatch(data.frame(fromJSON(paste0("https://api.outbreak.info/genomics/prevalence-by-location?location_id=USA_US-", state, "&mutations=", SNV))),
+      state_data = tryCatch(data.frame(jsonlite::fromJSON(paste0("https://api.outbreak.info/genomics/prevalence-by-location?location_id=USA_US-", state, "&mutations=", SNV))),
                             error = function(e)
                             data.frame("success" = FALSE))
 
-      state_data = data.frame(state_data) %>%
-        mutate("LOCATION" = state)
+      state_data = data.frame(state_data) |>
+        dplyr::mutate("LOCATION" = state)
 
-      names(state_data) = gsub(x = names(state_data), pattern = paste0("results.", gsub(x = SNV, pattern = ":", replacement = "."), "."), replacement = "")
+      names(state_data) = gsub(x = names(state_data),
+                               pattern = paste0("results.", gsub(x = SNV, pattern = ":", replacement = "."), "."),
+                               replacement = "")
 
       if (!'date' %in% colnames(state_data)) {
         message(paste(SNV, 'not found in', state))
       } else {
-        state_data = state_data %>%
-          mutate(date = as.Date(date), SNV = SNV)
+        state_data = state_data |>
+          dplyr::mutate(date = as.Date(date), SNV = SNV)
       }
 
-      df = bind_rows(df, state_data)
+      df = dplyr::bind_rows(df, state_data)
     }
   }
 
-  return(as_tibble(df))
+  return(tibble::as_tibble(df))
 }
 
 #' Country data from outbreak API
@@ -104,7 +104,7 @@ get_country_outbreak_info = function(countries, SNVs) {
                             error = function(e)
                               data.frame("success" = FALSE))
 
-      country_data = data.frame(country_data) %>%
+      country_data = data.frame(country_data) |>
         mutate("LOCATION" = country)
 
       names(country_data) = gsub(x = names(country_data), pattern = paste0("results.", gsub(x = SNV, pattern = ":", replacement = "."), "."), replacement = "")
@@ -112,7 +112,7 @@ get_country_outbreak_info = function(countries, SNVs) {
       if (!'date' %in% colnames(country_data)) {
         message(paste(SNV, 'not found in', country))
       } else {
-        country_data = country_data %>%
+        country_data = country_data |>
           mutate(date = as.Date(date), SNV = SNV)
       }
 
@@ -146,7 +146,7 @@ get_global_outbreak_info = function(SNVs) {
                             error = function(e)
                               data.frame("success" = FALSE))
 
-    global_data = data.frame(global_data) %>%
+    global_data = data.frame(global_data) |>
       mutate("LOCATION" = "GLOBAL")
 
     names(global_data) = gsub(x = names(global_data), pattern = paste0("results.", gsub(x = SNV, pattern = ":", replacement = "."), "."), replacement = "")
@@ -154,7 +154,7 @@ get_global_outbreak_info = function(SNVs) {
     if (!'date' %in% colnames(global_data)) {
       message(paste(SNV, 'not found in GLOBAL'))
     } else {
-      global_data = global_data %>%
+      global_data = global_data |>
         mutate(date = as.Date(date), SNV = SNV)
     }
 

@@ -8,6 +8,8 @@ get_outbreak_info(SNVs, states = "California")
 }
 \arguments{
 \item{SNVs}{A SNV or vector of SNVs formatted for the outbreak API (eg S:Y1155H)}
+
+\item{states}{A state or states to pull data from}
 }
 \description{
 Data from outbreak API
