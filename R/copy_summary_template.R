@@ -5,7 +5,7 @@
 #'
 #' @export
 
-copy_summary_template = function(path, name = "summary.Rmd", overwrite = TRUE) {
+copy_summary_template <- function(path, name = "summary.Rmd", overwrite = TRUE) {
   file.copy(system.file("Rmd", "summary_template.Rmd", package = "MappgeneSummary"), file.path(path, name), overwrite = overwrite)
   file.copy(system.file("Rmd", "style.css", package = "MappgeneSummary"), path, overwrite = overwrite)
   file.copy(system.file("extdata", "NC_045512.2.fasta", package = "MappgeneSummary"), path, overwrite = overwrite)

@@ -4,11 +4,14 @@
 \alias{add_zika_reference}
 \title{Add data for processed Zika peptides}
 \usage{
-add_zika_reference(df)
+add_zika_reference(df, remove_seqs = TRUE)
 }
 \arguments{
 \item{df}{A mappgene summary dataframe}
+
+\item{remove_seqs}{Remove the nucleotide and amino acid sequences from the dataframe}
 }
 \description{
-Add data for processed Zika peptides
+Given a mappgene dataframe, this function will add the genome reference data
+from Zika KJ776791.
 }

@@ -9,3 +9,4 @@ inst/rmd/summary_template.html
 inst/doc
 initialize.R
 .R_outbreak-info-token
+mappgene_zika_workflow.R

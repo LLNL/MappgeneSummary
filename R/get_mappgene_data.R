@@ -7,54 +7,55 @@
 #' @export
 #'
 
-read_mappgene_data = function(path, workflow = c("ivar", "lofreq"), sample_cleanup = "LLNL_") {
-
+read_mappgene_data <- function(path, workflow = c("ivar", "lofreq"), sample_cleanup = "LLNL_") {
   if (length(setdiff(workflow, c("ivar", "lofreq"))) > 0) {
     stop("Sorry, there are workflow terms I don't recognize. Please use lofreq and/or ivar only")
   }
 
-  l = list()
+  l <- list()
 
   if ("ivar" %in% workflow) {
-    pattern = "*.ivar.snpSIFT.txt$"
+    pattern <- "*.ivar.snpSIFT.txt$"
 
-    files = list.files(path = path, pattern = pattern, recursive = TRUE, full.names = T)
+    files <- list.files(path = path, pattern = pattern, recursive = TRUE, full.names = T)
     message(paste("Found", length(files), "ivar files"))
 
-    ivar = sapply(files,
-                  readr::read_delim,
-                  delim = "\t",
-                  comment = "##",
-                  simplify = FALSE,
-                  col_types = "ficcdifffcciic") |>
+    ivar <- sapply(files,
+      readr::read_delim,
+      delim = "\t",
+      comment = "##",
+      simplify = FALSE,
+      col_types = "ficcdifffcciic"
+    ) |>
       lapply(\(x) dplyr::mutate(x, dplyr::across(ALT_QUAL, as.double))) |> # to fix when a file is empty
       dplyr::bind_rows(.id = "id")
 
-    ivar = ivar |>
+    ivar <- ivar |>
       dplyr::filter(ALT_QUAL > 20) |>
-      dplyr::filter(FILTER == 'PASS')
+      dplyr::filter(FILTER == "PASS")
 
-    l$ivar = ivar
+    l$ivar <- ivar
   }
 
   if ("lofreq" %in% workflow) {
-    pattern = "*.ivar.lofreq.snpSIFT.txt$"
+    pattern <- "*.ivar.lofreq.snpSIFT.txt$"
 
-    files = list.files(path = path, pattern = pattern, recursive = TRUE, full.names = T)
+    files <- list.files(path = path, pattern = pattern, recursive = TRUE, full.names = T)
     message(paste("Found", length(files), "lofreq files"))
 
-    lofreq = sapply(files,
-                    readr::read_delim,
-                    delim = "\t",
-                    comment = "##",
-                    simplify = FALSE,
-                    col_types = "ficcdifffcciic") |>
-      #lapply(\(x) mutate(x, across(ALT_QUAL, as.double))) |> # to fix when a file is empty
+    lofreq <- sapply(files,
+      readr::read_delim,
+      delim = "\t",
+      comment = "##",
+      simplify = FALSE,
+      col_types = "ficcdifffcciic"
+    ) |>
+      # lapply(\(x) mutate(x, across(ALT_QUAL, as.double))) |> # to fix when a file is empty
       dplyr::bind_rows(.id = "id")
-    l$lofreq = lofreq
+    l$lofreq <- lofreq
   }
 
-  df = dplyr::bind_rows(l, .id = "PIPELINE") |>
+  df <- dplyr::bind_rows(l, .id = "PIPELINE") |>
     dplyr::mutate(FILE = basename(id)) |>
     dplyr::select(-id) |>
     dplyr::mutate(SAMPLE = FILE) |>
@@ -62,12 +63,14 @@ read_mappgene_data = function(path, workflow = c("ivar", "lofreq"), sample_clean
     dplyr::mutate(SAMPLE = stringr::str_replace(SAMPLE, ".ivar.lofreq.snpSIFT.txt", "")) |>
     dplyr::mutate(SAMPLE = stringr::str_replace(SAMPLE, sample_cleanup, ""))
 
-  names(df) = gsub(x = names(df), pattern = "ANN\\[\\*\\]\\.", replacement = "")
+  names(df) <- gsub(x = names(df), pattern = "ANN\\[\\*\\]\\.", replacement = "")
 
-  df = df |>
-    dplyr::select("SAMPLE", "PIPELINE", "GENE", "FEATUREID", "POS", "REF", "ALT", "AF", "DP", "EFFECT",
-           "HGVS_C", "HGVS_P", "CDNA_POS", "AA_POS", "FILE") |>
-    unique()|>
+  df <- df |>
+    dplyr::select(
+      "SAMPLE", "PIPELINE", "GENE", "FEATUREID", "POS", "REF", "ALT", "AF", "DP", "EFFECT",
+      "HGVS_C", "HGVS_P", "CDNA_POS", "AA_POS", "FILE"
+    ) |>
+    unique() |>
     dplyr::mutate(ALT_DP = as.integer(DP * AF)) |>
     tibble::as_tibble()
 

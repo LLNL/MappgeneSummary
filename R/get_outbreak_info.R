@@ -89,9 +89,6 @@ get_state_outbreak_info = function(states, SNVs) {
 
 get_country_outbreak_info = function(countries, SNVs) {
 
-  require(tidyverse)
-  require(jsonlite)
-
   df = data.frame()
 
   for (country in countries) {
@@ -100,12 +97,12 @@ get_country_outbreak_info = function(countries, SNVs) {
     for (SNV in SNVs) {
       SNV = toupper(SNV)
 
-      country_data = tryCatch(data.frame(fromJSON(paste0("https://api.outbreak.info/genomics/prevalence-by-location?location_id=", country, "&mutations=", SNV))),
+      country_data = tryCatch(data.frame(jsonlite::fromJSON(paste0("https://api.outbreak.info/genomics/prevalence-by-location?location_id=", country, "&mutations=", SNV))),
                             error = function(e)
                               data.frame("success" = FALSE))
 
       country_data = data.frame(country_data) |>
-        mutate("LOCATION" = country)
+        dplyr::mutate("LOCATION" = country)
 
       names(country_data) = gsub(x = names(country_data), pattern = paste0("results.", gsub(x = SNV, pattern = ":", replacement = "."), "."), replacement = "")
 
@@ -113,14 +110,14 @@ get_country_outbreak_info = function(countries, SNVs) {
         message(paste(SNV, 'not found in', country))
       } else {
         country_data = country_data |>
-          mutate(date = as.Date(date), SNV = SNV)
+          dplyr::mutate(date = as.Date(date), SNV = SNV)
       }
 
-      df = bind_rows(df, country_data)
+      df = dplyr::bind_rows(df, country_data)
     }
   }
 
-  return(as_tibble(df))
+  return(tibble::as_tibble(df))
 }
 
 #' Global data from outbreak API
@@ -134,20 +131,17 @@ get_country_outbreak_info = function(countries, SNVs) {
 
 get_global_outbreak_info = function(SNVs) {
 
-  require(tidyverse)
-  require(jsonlite)
-
   df = data.frame()
 
   for (SNV in SNVs) {
     SNV = toupper(SNV)
 
-    global_data = tryCatch(data.frame(fromJSON(paste0("https://api.outbreak.info/genomics/prevalence-by-location?mutations=", SNV))),
+    global_data = tryCatch(data.frame(jsonlite::fromJSON(paste0("https://api.outbreak.info/genomics/prevalence-by-location?mutations=", SNV))),
                             error = function(e)
-                              data.frame("success" = FALSE))
+                            data.frame("success" = FALSE))
 
     global_data = data.frame(global_data) |>
-      mutate("LOCATION" = "GLOBAL")
+      dplyr::mutate("LOCATION" = "GLOBAL")
 
     names(global_data) = gsub(x = names(global_data), pattern = paste0("results.", gsub(x = SNV, pattern = ":", replacement = "."), "."), replacement = "")
 
@@ -155,12 +149,12 @@ get_global_outbreak_info = function(SNVs) {
       message(paste(SNV, 'not found in GLOBAL'))
     } else {
       global_data = global_data |>
-        mutate(date = as.Date(date), SNV = SNV)
+        dplyr::mutate(date = as.Date(date), SNV = SNV)
     }
 
-    df = bind_rows(df, global_data)
+    df = dplyr::bind_rows(df, global_data)
 
   }
 
-  return(as_tibble(df))
+  return(tibble::as_tibble(df))
 }

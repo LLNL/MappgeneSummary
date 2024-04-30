@@ -53,8 +53,8 @@ parse_ref_alt <- function(df) {
   e1 <- df |>
     dplyr::filter(EFFECT == "disruptive_inframe_insertion") |>
     dplyr::filter(!grepl("dup", HGVS_P_modified)) |>
-    tidyr::separate(HGVS_P_modified, sep = "del", into = c("REF_AA", "ALT_AA"), remove = F) |>
-    dplyr::filter(grepl("ins", ALT_AA)) |>
+    tidyr::separate(HGVS_P_modified, sep = "ins", into = c("REF_AA", "ALT_AA"), remove = F) |>
+    #dplyr::filter(grepl("ins", ALT_AA)) |>
     dplyr::mutate(REF_AA = stringr::str_replace_all(REF_AA, setNames(replacement, patterns))) |>
     dplyr::mutate(ALT_AA = stringr::str_replace_all(ALT_AA, setNames(replacement, patterns)))
 

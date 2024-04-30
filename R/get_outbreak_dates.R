@@ -10,17 +10,15 @@
 #'
 #' @examples
 #' get_outbreak_peak(top20_results)
-#' get_outbreak_info(SNVs = "S:Y1155H") %>% get_outbreak_peak()
-
-get_outbreak_peak = function(df) {
-
-  df %>%
-    group_by(location, lineage) %>%
-    filter(proportion == max(proportion)) %>%
-    filter(date == min(date)) %>% # get first date if multiple are the same
-    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "PEAK", CODE = paste(location, lineage, sep = "_")) %>%
-    dplyr::rename("DATE" = "date") %>%
-    select(location, lineage, TYPE, DATE, PERCENT, CODE) %>%
+#' get_outbreak_info(SNVs = "S:Y1155H") |> get_outbreak_peak()
+get_outbreak_peak <- function(df) {
+  df |>
+    dplyr::group_by(location, lineage) |>
+    dplyr::filter(proportion == max(proportion)) |>
+    dplyr::filter(date == min(date)) |> # get first date if multiple are the same
+    dplyr::mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "PEAK", CODE = paste(location, lineage, sep = "_")) |>
+    dplyr::rename("DATE" = "date") |>
+    dplyr::select(location, lineage, TYPE, DATE, PERCENT, CODE) |>
     unique()
 }
 
@@ -34,17 +32,19 @@ get_outbreak_peak = function(df) {
 #'
 #' @examples
 #' get_outbreak_start(top20_results)
-#' get_outbreak_info(SNVs = "S:Y1155H") %>% get_outbreak_start()
-
-get_outbreak_start= function(df) {
-
-  df %>%
-    group_by(location, lineage) %>%
-    filter(lineage_count_rolling > 0) %>%
-    filter(date == min(date)) %>%
-    mutate(PERCENT = scales::percent(proportion, accuracy = .001), TYPE = "FIRST", CODE = paste(location, lineage, sep = "_")) %>%
-    dplyr::rename("DATE" = "date") %>%
-    select(location, lineage, TYPE, DATE, PERCENT, CODE) %>%
+#' get_outbreak_info(SNVs = "S:Y1155H") |> get_outbreak_start()
+get_outbreak_start <- function(df) {
+  df |>
+    dplyr::group_by(location, lineage) |>
+    dplyr::filter(lineage_count_rolling > 0) |>
+    dplyr::filter(date == min(date)) |>
+    dplyr::mutate(
+      PERCENT = scales::percent(proportion, accuracy = .001),
+      TYPE = "FIRST",
+      CODE = paste(location, lineage, sep = "_")
+    ) |>
+    dplyr::rename("DATE" = "date") |>
+    dplyr::select(location, lineage, TYPE, DATE, PERCENT, CODE) |>
     unique()
 }
 
@@ -58,19 +58,19 @@ get_outbreak_start= function(df) {
 #'
 #' @examples
 #' get_outbreak_latest(top20_results)
-#' get_outbreak_info(SNVs = "S:Y1155H") %>% get_outbreak_latest()
-
-get_outbreak_latest = function (df) {
-  df %>%
-    mutate(date = as.Date(date)) %>%
-    group_by(location, lineage) %>%
-    filter(lineage_count_rolling > 0) %>%
-    filter(date == max(date)) %>%
-    mutate(PERCENT = scales::percent(proportion,accuracy = 0.001), TYPE = "LATEST", CODE = paste(location, lineage, sep = "_")) %>%
-    dplyr::rename(DATE = "date") %>%
-    select(location, lineage, TYPE, DATE, PERCENT, CODE) %>%
+#' get_outbreak_info(SNVs = "S:Y1155H") |> get_outbreak_latest()
+get_outbreak_latest <- function(df) {
+  df |>
+    dplyr::mutate(date = as.Date(date)) |>
+    dplyr::group_by(location, lineage) |>
+    dplyr::filter(lineage_count_rolling > 0) |>
+    dplyr::filter(date == max(date)) |>
+    dplyr::mutate(
+      PERCENT = scales::percent(proportion, accuracy = 0.001),
+      TYPE = "LATEST",
+      CODE = paste(location, lineage, sep = "_")
+    ) |>
+    dplyr::rename(DATE = "date") |>
+    dplyr::select(location, lineage, TYPE, DATE, PERCENT, CODE) |>
     unique()
 }
-
-
-

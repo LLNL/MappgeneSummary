@@ -39,3 +39,11 @@
 #'
 #' @family "example datasets"
 "example_df_C_lofreq"
+
+#' Zika genome coordinates reference
+#'
+#' @format ## `zika_reference`
+"zika_reference"
+
+
+
