@@ -11,19 +11,18 @@
 #'
 #' @examples
 #' plot_heatmap(df, rows = "SNV", columns = "SAMPLE")
-#' df %>% filter(GENE == "ORF3a") %>% plot_heatmap(rows = "EFFECT", columns = "SAMPLE")
+#' df |> filter(GENE == "ORF3a") |> plot_heatmap(rows = "EFFECT", columns = "SAMPLE")
 
-plot_heatmap = function(df, columns = "SAMPLE", rows = "SNV", na.value = 0, ...) {
-  require(pheatmap)
+plot_heatmap = function(df, columns = "SAMPLE", rows = "SNV", na.value = 0) {
 
-  df %>%
-    as_tibble() %>%
-    select(columns, rows, AF) %>%
-    group_by_at(c(columns, rows)) %>%
-    summarize(AF = mean(AF), .groups = 'drop') %>%
-    pivot_wider(names_from = columns, values_from = AF, values_fill = (AF = na.value)) %>%
-    column_to_rownames(rows) %>%
-    as.matrix() %>%
+  df |>
+    tibble::as_tibble() |>
+    dplyr::select(columns, rows, AF) |>
+    dplyr::group_by_at(c(columns, rows)) |>
+    dplyr::summarize(AF = mean(AF), .groups = 'drop') |>
+    tidyr::pivot_wider(names_from = columns, values_from = AF, values_fill = (AF = na.value)) |>
+    tibble::column_to_rownames(rows) |>
+    as.matrix() |>
     pheatmap::pheatmap(show_rownames = T,
                        border_color = NA,
                        color = viridis::viridis(100))

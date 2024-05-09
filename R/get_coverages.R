@@ -3,7 +3,7 @@
 #' @param file_path A directory with bedgraph files
 #'
 #' @export
-
+#' @importFrom rlang .data
 
 
 get_coverages <- function(file_path) {
@@ -15,15 +15,15 @@ get_coverages <- function(file_path) {
                      simplify = FALSE,
                      col_types = readr::cols()) |>
     dplyr::bind_rows(.id = "SAMPLE") |>
-    dplyr::mutate(FILE = dirname(SAMPLE)) |>
-    dplyr::mutate(FILE = stringr::str_remove(FILE, file_path)) |>
-    dplyr::mutate(SAMPLE = basename(SAMPLE)) |>
-    dplyr::mutate(SAMPLE = stringr::str_remove(SAMPLE, ".ivar.bedgraph")) |>
-    dplyr::mutate(POS = purrr::map2(START, STOP - 1, ~ seq(from = .x, to = .y))) |>
-    dplyr::mutate(FOLDER = dirname(FILE)) |>
-    dplyr::select(SAMPLE, COV, POS, FOLDER) |>
-    tidyr::unnest(cols = c(POS)) |>
-    dplyr::arrange(POS)
+    dplyr::mutate(FILE = dirname(.data$SAMPLE)) |>
+    dplyr::mutate(FILE = stringr::str_remove(.data$FILE, file_path)) |>
+    dplyr::mutate(SAMPLE = basename(.data$SAMPLE)) |>
+    dplyr::mutate(SAMPLE = stringr::str_remove(.data$SAMPLE, ".ivar.bedgraph")) |>
+    dplyr::mutate(POS = purrr::map2(.data$START, .data$STOP - 1, ~ seq(from = .x, to = .y))) |>
+    dplyr::mutate(FOLDER = dirname(.data$FILE)) |>
+    dplyr::select(.data$SAMPLE, .data$COV, .data$POS, .data$FOLDER) |>
+    tidyr::unnest(cols = c(.data$POS)) |>
+    dplyr::arrange(.data$POS)
 
   coverage
 }
@@ -37,10 +37,11 @@ get_coverages <- function(file_path) {
 #' @param intercept An x value to draw a vertical line
 #'
 #' @export
+#' @importFrom rlang .data
 
 plot_coverage_ecdf <- function(coverage, pseudocount = 1, intercept = 100) {
   coverage |>
-    dplyr::mutate(COV = COV + pseudocount) |>
+    dplyr::mutate(COV = .data$COV + pseudocount) |>
     ggplot2::ggplot(ggplot2::aes(x = COV)) +
     ggplot2::stat_ecdf(pad = F) +
     ggplot2::theme(legend.position = "bottom") +

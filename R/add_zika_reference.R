@@ -7,30 +7,31 @@
 #' @param remove_seqs Remove the nucleotide and amino acid sequences from the dataframe
 #'
 #' @export
+#' @importFrom rlang .data
 
 
 add_zika_reference <- function(df,
                                remove_seqs = TRUE) {
   df <- dplyr::mutate(df, dummy_join = "ZIKA")
-  zika_KJ776791 <- dplyr::mutate(zika_reference, dummy_join = "ZIKA")
+  zika_KJ776791 <- dplyr::mutate(MappgeneSummary::zika_reference, dummy_join = "ZIKA")
 
   # remove pre proteins
 
   zika_KJ776791 <- zika_KJ776791 |>
-    dplyr::filter(!SHORT_NAME %in% c("prM", "C"))
+    dplyr::filter(!.data$SHORT_NAME %in% c("prM", "C"))
 
   df <- df |>
     dplyr::inner_join(zika_KJ776791,
       by = "dummy_join",
       relationship = "many-to-many"
     ) |>
-    dplyr::filter(POS >= GENOME_START, POS <= GENOME_STOP) |>
-    dplyr::select(-c(GENOME_START, GENOME_STOP, dummy_join)) |>
-    dplyr::mutate(AA_PROCESSED_POS = AA_POS - AA_START + 1)
+    dplyr::filter(.data$POS >= .data$GENOME_START, .data$POS <= .data$GENOME_STOP) |>
+    dplyr::select(-c(.data$GENOME_START, .data$GENOME_STOP, .data$dummy_join)) |>
+    dplyr::mutate(AA_PROCESSED_POS = .data$AA_POS - .data$AA_START + 1)
 
   if (remove_seqs) {
     df <- df |>
-      dplyr::select(-NT, -AA)
+      dplyr::select(-.data$NT, -.data$AA)
   }
 
   df

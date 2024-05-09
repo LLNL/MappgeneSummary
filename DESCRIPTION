@@ -1,7 +1,7 @@
 Package: MappgeneSummary
 Type: Package
 Title: Summarize Mappgene SNV Data
-Version: 0.10.0
+Version: 0.10.1
 Author: Who wrote it
 Maintainer: Jeff Kimbrel <kimbrel1@llnl.gov>
 Description: This is an R package for working with and summarizing SNV data from mappgene.
@@ -34,6 +34,13 @@ Imports:
     gggenes,
     ggrepel,
     ggmsa,
-    msa
+    msa,
+    pheatmap,
+    lubridate,
+    rlang,
+    patchwork,
+    Biostrings,
+    IRanges,
+    XVector
 Remotes:
     outbreak-info/R-outbreak-info

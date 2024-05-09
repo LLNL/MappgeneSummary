@@ -7,10 +7,7 @@
 #' @param df A tibble or dataframe from one of the get outbreak functions
 #'
 #' @export
-#'
-#' @examples
-#' get_outbreak_peak(top20_results)
-#' get_outbreak_info(SNVs = "S:Y1155H") |> get_outbreak_peak()
+
 get_outbreak_peak <- function(df) {
   df |>
     dplyr::group_by(location, lineage) |>
@@ -29,10 +26,7 @@ get_outbreak_peak <- function(df) {
 #' @param df A tibble or dataframe from one of the get outbreak functions
 #'
 #' @export
-#'
-#' @examples
-#' get_outbreak_start(top20_results)
-#' get_outbreak_info(SNVs = "S:Y1155H") |> get_outbreak_start()
+
 get_outbreak_start <- function(df) {
   df |>
     dplyr::group_by(location, lineage) |>
@@ -55,10 +49,7 @@ get_outbreak_start <- function(df) {
 #' @param df A tibble or dataframe from one of the get outbreak functions
 #'
 #' @export
-#'
-#' @examples
-#' get_outbreak_latest(top20_results)
-#' get_outbreak_info(SNVs = "S:Y1155H") |> get_outbreak_latest()
+
 get_outbreak_latest <- function(df) {
   df |>
     dplyr::mutate(date = as.Date(date)) |>

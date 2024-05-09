@@ -54,7 +54,7 @@ parse_ref_alt <- function(df) {
     dplyr::filter(EFFECT == "disruptive_inframe_insertion") |>
     dplyr::filter(!grepl("dup", HGVS_P_modified)) |>
     tidyr::separate(HGVS_P_modified, sep = "ins", into = c("REF_AA", "ALT_AA"), remove = F) |>
-    #dplyr::filter(grepl("ins", ALT_AA)) |>
+    # dplyr::filter(grepl("ins", ALT_AA)) |>
     dplyr::mutate(REF_AA = stringr::str_replace_all(REF_AA, setNames(replacement, patterns))) |>
     dplyr::mutate(ALT_AA = stringr::str_replace_all(ALT_AA, setNames(replacement, patterns)))
 
@@ -95,67 +95,60 @@ parse_ref_alt <- function(df) {
 #' @export
 
 view_HGVS_C <- function(HGVS_C, gene = "S", window = 10) {
-  require(tidyverse)
-  require(Biostrings)
-  require(msa)
-  require(ggmsa)
-  require(patchwork)
-
   genome_file <- system.file("extdata", "NC_045512.2.gbk.ffn", package = "MappgeneSummary")
-  seqs <- readDNAStringSet(genome_file, "fasta")
+  seqs <- Biostrings::readDNAStringSet(genome_file, "fasta")
 
   # logic to do substitutions
   if (grepl("del", HGVS_C)) {
     n <- stringr::str_extract_all(HGVS_C, "\\d+")
     start <- as.numeric(n[[1]][1])
     stop <- as.numeric(n[[1]][2])
-    range <- IRanges(start, stop)
+    range <- IRanges::IRanges(start, stop)
 
     window_right <- floor(start(range) / 3) * 3 + window * 3
 
-    S <- subseq(seqs[[gene]], 1, window_right)
-    # S = seqs[[gene]]
-    S_modified <- replaceAt(S, range, value = strrep("N", width(range)))
+    S <- XVector::subseq(seqs[[gene]], 1, window_right)
+    S_modified <- Biostrings::replaceAt(S, range, value = strrep("N", width(range)))
   } else if (grepl(">", HGVS_C)) {
     n <- stringr::str_extract(HGVS_C, "\\d+")
     start <- as.numeric(n[[1]][1])
-    range <- IRanges(start, start)
+    range <- IRanges::IRanges(start, start)
 
     window_right <- floor(start(range) / 3) * 3 + window * 3
 
-    S <- subseq(seqs[[gene]], 1, window_right)
-    # S = seqs[[gene]]
-    S_modified <- replaceAt(S, range, value = str_sub(HGVS_C, -1))
+    S <- XVector::subseq(seqs[[gene]], 1, window_right)
+
+    S_modified <- Biostrings::replaceAt(S, range, value = str_sub(HGVS_C, -1))
   } else if (grepl("ins", HGVS_C)) {
-    a <- str_split(HGVS_C, pattern = "ins|dup")[[1]]
+    a <- stringr::str_split(HGVS_C, pattern = "ins|dup")[[1]]
     insertion <- a[2]
     n <- stringr::str_extract_all(a[1], "\\d+")
     start <- as.numeric(n[[1]][1])
-    range <- IRanges(start)
-    y_range <- IRanges(start, start + (nchar(insertion)))
+    range <- IRanges::IRanges(start)
+    y_range <- IRanges::IRanges(start, start + (nchar(insertion)))
 
     window_right <- floor(start(range) / 3) * 3 + window * 3
 
-    S <- subseq(seqs[[gene]], 1, window_right)
-    # S = seqs[[gene]]
-    S <- replaceAt(S, range, value = paste0(as.character(subseq(S, start(range), end(range))), strrep("N", nchar(insertion))))
-    S_modified <- replaceAt(S, y_range, value = paste0(as.character(subseq(S, start(range), end(range))), insertion))
+    S <- XVector::subseq(seqs[[gene]], 1, window_right)
+
+    S <- Biostrings::replaceAt(S, range, value = paste0(as.character(XVector::subseq(S, start(range), end(range))), strrep("N", nchar(insertion))))
+    S_modified <- Biostrings::replaceAt(S, y_range, value = paste0(as.character(XVector::subseq(S, start(range), end(range))), insertion))
 
     range <- y_range # just to get the window size right
   } else if (grepl("dup", HGVS_C)) {
-    a <- str_split(HGVS_C, pattern = "ins|dup")[[1]]
+    a <- stringr::str_split(HGVS_C, pattern = "ins|dup")[[1]]
     insertion <- a[2]
     n <- stringr::str_extract_all(a[1], "\\d+")
     start <- as.numeric(n[[1]][2])
-    range <- IRanges(start)
-    y_range <- IRanges(start, start + (nchar(insertion)))
+    range <- IRanges::IRanges(start)
+    y_range <- IRanges::IRanges(start, start + (nchar(insertion)))
 
     window_right <- floor(start(range) / 3) * 3 + window * 3
 
-    S <- subseq(seqs[[gene]], 1, window_right)
+    S <- XVector::subseq(seqs[[gene]], 1, window_right)
     # S = seqs[[gene]]
-    S <- replaceAt(S, range, value = paste0(as.character(subseq(S, start(range), end(range))), strrep("N", nchar(insertion))))
-    S_modified <- replaceAt(S, y_range, value = paste0(as.character(subseq(S, start(range), end(range))), insertion))
+    S <- Biostrings::replaceAt(S, range, value = paste0(as.character(XVector::subseq(S, start(range), end(range))), strrep("N", nchar(insertion))))
+    S_modified <- Biostrings::replaceAt(S, y_range, value = paste0(as.character(XVector::subseq(S, start(range), end(range))), insertion))
 
     range <- y_range # just to get the window size right
   }
@@ -174,18 +167,20 @@ view_HGVS_C <- function(HGVS_C, gene = "S", window = 10) {
   gene_list[[paste(gene, "(NC_045512.2)")]] <- S
   gene_list[[paste(gene, "(modified)")]] <- S_modified
 
-  dna <- DNAStringSet(x = gene_list)
-  aa <- translate(dna, if.fuzzy.codon = "X")
+  dna <- Biostrings::DNAStringSet(x = gene_list)
+  aa <- Biostrings::translate(dna, if.fuzzy.codon = "X")
 
-  dna_aln <- DNAMultipleAlignment(msa(dna, gapExtension = 0))
-  aa_aln <- AAMultipleAlignment(msa(aa, gapExtension = 0))
+  dna_aln <- Biostrings::DNAMultipleAlignment(msa(dna, gapExtension = 0))
+  aa_aln <- Biostrings::AAMultipleAlignment(msa(aa, gapExtension = 0))
 
 
-  a <- ggmsa(dna, aa_left * 3 - 2, aa_right * 3, color = "Chemistry_NT", font = "DroidSansMono", char_width = 0.5, seq_name = TRUE) + geom_msaBar()
-  b <- ggmsa(aa_aln, aa_left, aa_right, color = "Chemistry_AA", font = "DroidSansMono", char_width = 0.5, seq_name = TRUE) + geom_msaBar()
+  a <- ggmsa::ggmsa(dna, aa_left * 3 - 2, aa_right * 3, color = "Chemistry_NT", font = "DroidSansMono", char_width = 0.5, seq_name = TRUE) + geom_msaBar()
+  b <- ggmsa::ggmsa(aa_aln, aa_left, aa_right, color = "Chemistry_AA", font = "DroidSansMono", char_width = 0.5, seq_name = TRUE) + geom_msaBar()
 
-  a$plotlist[[2]] / b$plotlist[[2]] +
-    plot_annotation(
-      title = paste(gene, HGVS_C)
-    )
+  patchwork::wrap_plots(
+    a$plotlist[[2]] / b$plotlist[[2]] +
+      plot_annotation(
+        title = paste(gene, HGVS_C)
+      )
+  )
 }
