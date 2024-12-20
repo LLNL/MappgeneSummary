@@ -6,13 +6,10 @@
 #' @export
 #'
 #' @return A ggplot2 object which can be modified inline
-#'
-#' @examples
-#' plot_outbreak_trends(top20_results)
-#' get_state_outbreak_info(states = c("CA", "OR"), SNVs = "S:Y1155H") |> plot_outbreak_trends()
+
 plot_outbreak_trends <- function(df, title = "Proportions (free y-axis scale)", line_width = 1, line_alpha = 0.8) {
   # guess the number of columns, keeping max of 6 rows
-  ncols <- ceiling((pull(df, lineage) |> na.omit() |> unique() |> length()) / 6)
+  ncols <- ceiling((dplyr::pull(df, lineage) |> na.omit() |> unique() |> length()) / 6)
 
   df |>
     dplyr::filter(total_count > 0) |>

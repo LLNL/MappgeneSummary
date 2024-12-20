@@ -13,7 +13,9 @@ hill_12I(x)
 a data.frame with Hill's N_1, N_2, N_Inf for each sample
 }
 \description{
-Calculate Hill numbers of order 1, 2, and Inf from a matrix
+For both Hill 1 and 2, a maximally variant site will have a value of \eqn{n}
+(which is 4 for the 4 possible nucleotides), and maximally invariant site is
+1.
 }
 \details{
 log(N_1) is entropy, log(N_2) is inverse Simpson's

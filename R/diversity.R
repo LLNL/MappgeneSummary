@@ -1,5 +1,9 @@
 #' Calculate Hill numbers of order 1, 2, and Inf from a matrix
 #'
+#' For both Hill 1 and 2, a maximally variant site will have a value of \eqn{n}
+#' (which is 4 for the 4 possible nucleotides), and maximally invariant site is
+#' 1.
+#'
 #' @param x a matrix with nrows samples and ncol counts
 #'
 #' @return a data.frame with Hill's N_1, N_2, N_Inf for each sample
@@ -11,7 +15,13 @@ hill_12I <- function(x) {
   vegan::renyi(x, scales = c(1, 2, Inf), hill = TRUE)
 }
 
+
+
+
 #' Calculate the Simpson index for a set of frequencies
+#'
+#' A maximally variant site will have a value of 1, and a maximally invariant
+#' site will have a value of \eqn{1/n} (or 0.25 for the 4 possible nucleotides).
 #'
 #' @param x a numeric vector
 #'

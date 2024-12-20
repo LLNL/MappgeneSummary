@@ -8,10 +8,6 @@
 #' @param na.value The numerical value to set the NA values to. Changing this (from 0 to -1) can affect the "chaining" effect of clustering.
 #'
 #' @export
-#'
-#' @examples
-#' plot_heatmap(df, rows = "SNV", columns = "SAMPLE")
-#' df |> filter(GENE == "ORF3a") |> plot_heatmap(rows = "EFFECT", columns = "SAMPLE")
 
 plot_heatmap = function(df, columns = "SAMPLE", rows = "SNV", na.value = 0) {
 

@@ -18,7 +18,3 @@ plot_heatmap(df, columns = "SAMPLE", rows = "SNV", na.value = 0)
 \description{
 If working with a lot of data it is recommended to filter your df first, and then pass it into the plot_heatmap() function
 }
-\examples{
-plot_heatmap(df, rows = "SNV", columns = "SAMPLE")
-df |> filter(GENE == "ORF3a") |> plot_heatmap(rows = "EFFECT", columns = "SAMPLE")
-}

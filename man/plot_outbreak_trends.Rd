@@ -22,7 +22,3 @@ A ggplot2 object which can be modified inline
 \description{
 Plot trend data by location from outbreak API
 }
-\examples{
-plot_outbreak_trends(top20_results)
-get_state_outbreak_info(states = c("CA", "OR"), SNVs = "S:Y1155H") |> plot_outbreak_trends()
-}

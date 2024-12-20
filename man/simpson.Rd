@@ -13,7 +13,8 @@ simpson(x)
 the Simpson index
 }
 \description{
-Calculate the Simpson index for a set of frequencies
+A maximally variant site will have a value of 1, and a maximally invariant
+site will have a value of \eqn{1/n} (or 0.25 for the 4 possible nucleotides).
 }
 \details{
 The Simpson index is the probability that two bases are the

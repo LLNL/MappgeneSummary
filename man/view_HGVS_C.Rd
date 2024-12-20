@@ -16,7 +16,3 @@ view_HGVS_C(HGVS_C, gene = "S", window = 10)
 \description{
 Plot the consequences of HGVS_C against the wildtype (NC_045512.2) gene sequence
 }
-\examples{
-view_HGVS_C(HGVS_C = "c.326_328delCTT")
-
-}

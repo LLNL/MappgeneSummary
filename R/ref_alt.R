@@ -89,9 +89,6 @@ parse_ref_alt <- function(df) {
 #' @param gene The gene name
 #' @param window An approximate upstream and downstream window size for plotting
 #'
-#' @examples
-#' view_HGVS_C(HGVS_C = "c.326_328delCTT")
-#'
 #' @export
 
 view_HGVS_C <- function(HGVS_C, gene = "S", window = 10) {
